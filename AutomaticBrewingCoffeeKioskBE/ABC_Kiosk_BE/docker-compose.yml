@@ -1,0 +1,84 @@
+version: '3.9'
+
+services:
+  cloudflare-ddns:
+    image: cloudflare/cloudflared:latest
+    container_name: kiosk-cloudflare
+    network_mode: "host"
+    command: tunnel --no-autoupdate run
+    restart: unless-stopped
+    environment: 
+      - TUNNEL_TOKEN=${TUNNEL_TOKEN}
+  postgressql:
+    image: postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    # volumes:
+    #   - pgdata:/var/lib/postgresql/data
+
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 8080:8080
+
+  redis:
+    image: redis
+    container_name: redis
+    ports:
+      - "6379:6379"
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"    
+      - "15672:15672"   
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+
+  api:
+    build:
+      context: ./ABC_Kiosk_BE
+      dockerfile: Dockerfile
+    container_name: abc-kiosk-system
+    ports:
+      - "7554:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT}
+      - ConnectionStrings__Db=Host=postgressql;Port=5432;Database=AutoBrewing_Kiosk_BE;Username=postgres;Password=postgres;Trust Server Certificate=true;
+      - Redis__ConnectionString=redis:6379,abortConnect=false
+      - RabbitMQ__Host=rabbitmq
+      - RabbitMQ__Port=5672
+      - RabbitMQ__Username=guest
+      - RabbitMQ__Password=guest
+      - AzureServiceConn=${AzureServiceConn}
+    depends_on:
+      - postgressql
+      - redis
+      - rabbitmq
+      - cf-machine
+      - cd-machine
+      - im-machine
+  cf-machine:
+    build:
+      context: ./CoffeeMachineController/CoffeeMachineController
+      dockerfile: Dockerfile
+    devices:
+      - /dev/ttyUSB0:/dev/ttyUSB0
+  cd-machine:
+    build:
+      context: ./CupDropMachineController/CupDropMachineController
+      dockerfile: Dockerfile
+  im-machine:
+    build:
+      context: ./IceMakerMachine/IceMakerMachine
+      dockerfile: Dockerfile
+    devices:
+      - /dev/ttyUSB1:/dev/ttyUSB1  
+# volumes:
+#     pgdata:

@@ -1,0 +1,28 @@
+﻿using Services.Dtos.DeviceFunction;
+using Services.Dtos.DeviceIngredient;
+using Services.Dtos.DeviceType;
+
+namespace Services.Dtos.DeviceModel;
+
+public class DeviceModelDto
+{
+    public string DeviceModelId { get; set; } = null!;
+
+    public string? ModelName { get; set; } = null!;
+
+    public string? Manufacturer { get; set; } = null!;
+
+    public string? DeviceTypeId { get; set; }
+
+    public virtual DeviceTypeDto? DeviceType { get; set; }
+
+    public string? Status { get; set; }
+
+    public DateTime CreatedDate { get; set; }
+
+    public DateTime? UpdatedDate { get; set; } = null!;
+
+    public List<DeviceFunctionInsideDto> DeviceFunctions { get; set; } = null!;
+
+    public List<DeviceIngredientInsideDto> DeviceIngredients { get; set; } = null!;
+}

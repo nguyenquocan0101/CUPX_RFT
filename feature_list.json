@@ -1,0 +1,42 @@
+[
+  {
+    "id": "docker-managed-kiosk-stack",
+    "title": "Start all Docker-managed kiosk components with one Compose command",
+    "user_visible_behavior": "so that deployment and restart are repeatable",
+    "verification_command": "docker compose up -d --wait --wait-timeout 120 && docker compose ps",
+    "status": "not_started",
+    "evidence": "",
+    "notes": "",
+    "priority": "P1"
+  },
+  {
+    "id": "public-authenticated-kiosk-api",
+    "title": "Call the kiosk API through https://kiosk-api.alpa.vn",
+    "user_visible_behavior": "so that the kiosk can be reached without opening inbound router ports",
+    "verification_command": "Authenticated GET /api/v1/ping returns 200, while the same request without X-API-Key returns 401 and no management service is public",
+    "status": "not_started",
+    "evidence": "",
+    "notes": "",
+    "priority": "P1"
+  },
+  {
+    "id": "windows-arm-supervision",
+    "title": "Supervise ArmController as a native Windows service",
+    "user_visible_behavior": "so that robot control remains .NET Framework compatible and recovers after reboot",
+    "verification_command": "ArmController service is running within 60 seconds of the defined boot readiness point and restarts a killed process within 10 seconds",
+    "status": "not_started",
+    "evidence": "",
+    "notes": "",
+    "priority": "P1"
+  },
+  {
+    "id": "persistent-kiosk-state",
+    "title": "Preserve database and broker state across container recreation",
+    "user_visible_behavior": "so that operational data is not erased unintentionally",
+    "verification_command": "PostgreSQL, CouchDB, Redis, and RabbitMQ retain test state after docker compose down followed by docker compose up -d without -v",
+    "status": "not_started",
+    "evidence": "",
+    "notes": "",
+    "priority": "P1"
+  }
+]

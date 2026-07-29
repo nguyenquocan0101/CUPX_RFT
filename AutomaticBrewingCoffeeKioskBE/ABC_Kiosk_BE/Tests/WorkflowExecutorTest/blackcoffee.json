@@ -1,0 +1,64 @@
+﻿{
+    "WorkflowId": "b8f8af80-2a64-4670-90ca-c429f052d50",
+    "WorkflowName": "Quy Trình Pha Cà Phê Đen",
+    "WorkflowType": "Activity",
+    "WorkflowDescription": null,
+    "Steps": [
+        {
+            "StepId": "d45402a0-553b-4f93-a027-37224354aecb",
+            "name": "Di chuyển đến máy thả ly 1",
+            "function": "runScript",
+            "Sequence": 1,
+            "DeviceModelId": "2f5bfe-dfaf-40d4-b930-b534da0ab8a9",
+            "parameters": "{\"name\": \"getCup\"}"
+        },
+        {
+            "StepId": "f8f384ca-e9dd-496b-b802-14be9cbdaa94",
+            "name": "Di chuyển đến máy thả ly 2",
+            "function": "runScript",
+            "Sequence": 2,
+            "DeviceModelId": "2f5bfe-dfaf-40d4-b930-b534da0ab8a9",
+            "parameters": "{\"name\": \"takeoutCup\"}"
+        },
+        {
+            "StepId": "e095d9d9-6f62-4963-a327-33a8bac3638b",
+            "name": "Di chuyển đến máy cafe 1",
+            "function": "runScript",
+            "Sequence": 3,
+            "DeviceModelId": "2f5bfe-dfaf-40d4-b930-b534da0ab8a9",
+            "parameters": "{\"name\": \"getCoffee\"}"
+        },
+        {
+            "StepId": "2371cbd3-956c-4d39-b877-27613739d622",
+            "name": "Di chuyển đến máy cafe 2",
+            "function": "runScript",
+            "Sequence": 4,
+            "DeviceModelId": "2f5bfe-dfaf-40d4-b930-b534da0ab8a9",
+            "parameters": "{\"name\": \"takeoffCoffee\"}"
+        },
+        {
+            "StepId": "552ebbce-5722-4e23-9404-b3a39ba9999c",
+            "name": "Di chuyen den may da 1",
+            "function": "runScript",
+            "Sequence": 5,
+            "DeviceModelId": "2f5bfe-dfaf-40d4-b930-b534da0ab8a9",
+            "parameters": "{\"name\": \"getIce\"}"
+        },
+        {
+            "StepId": "fedbdcf1-a5b5-4b28-a8b7-a18d64683509",
+            "name": "Di chuyen den ke ly",
+            "function": "runScript",
+            "Sequence": 6,
+            "DeviceModelId": "2f5bfe-dfaf-40d4-b930-b534da0ab8a9",
+            "parameters": "{\"name\": \"dispenser\"}"
+        },
+        {
+            "StepId": "fbd491a8-fb7b-4070-9d97-fef7648fa6dd",
+            "name": "Idle",
+            "function": "runScript",
+            "Sequence": 7,
+            "DeviceModelId": "2f5bfe-dfaf-40d4-b930-b534da0ab8a9",
+            "parameters": "{\"name\": \"idle\"}"
+        }
+    ]
+}

@@ -1,0 +1,82 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Confirmation Email</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+        }
+
+        .email-container {
+            width: 100%;
+            padding: 20px;
+            background-color: #ffffff;
+            border-radius: 8px;
+            margin: 20px auto;
+            max-width: 600px;
+        }
+
+        .header {
+            text-align: center;
+            background-color: #4CAF50;
+            padding: 20px;
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+        }
+
+        .header h1 {
+            color: #ffffff;
+            margin: 0;
+            font-size: 24px;
+        }
+
+        .content {
+            padding: 20px;
+            color: #333333;
+            line-height: 1.6;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 20px;
+            font-size: 12px;
+            color: #777777;
+        }
+    </style>
+</head>
+<body>
+
+<div class="email-container">
+    <!-- Email Header -->
+    <div class="header">
+        <h1>Confirmation</h1>
+    </div>
+
+    <!-- Email Content -->
+    <div class="content">
+        <p>Hi {Email},</p>
+        <p>Thank you for registering with us.</p>
+
+        <p>Here is your token:</p>
+
+        <p style="text-align: center;">
+            {Token}
+        </p>
+
+        <p>Best regards,<br>MBS</p>
+    </div>
+
+    <!-- Email Footer -->
+    <div class="footer">
+        <p>&copy; 2024 MBS. All rights reserved.</p>
+        <p>If you didn't perform this action, please contact us immediately.</p>
+    </div>
+</div>
+
+</body>
+</html>

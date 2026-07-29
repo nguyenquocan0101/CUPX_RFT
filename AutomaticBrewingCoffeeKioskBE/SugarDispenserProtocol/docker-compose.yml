@@ -1,0 +1,10 @@
+version: '3.9'
+
+services:
+  sugar-dispenser:
+    build: .
+    container_name: sugar-dispenser
+    devices:
+      - "COM3"  # ánh xạ COM3 nếu dùng WSL2 hoặc Linux
+    privileged: true             # cho phép truy cập thiết bị
+    restart: unless-stopped

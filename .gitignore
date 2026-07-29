@@ -1,0 +1,48 @@
+# Local secrets and credentials
+**/.env
+**/.env.local
+**/.env.*
+!**/.env.example
+**/*firebase-adminsdk*.json
+**/*credential*.json
+**/ENV_CONFIG_SUMMARY.md
+
+# Nested repository metadata and local agent indexes
+**/.git/
+**/.codegraph/
+**/.codex/
+**/.agents/
+
+# The Flutter handoff contains an untracked duplicate backend copy; the canonical
+# backend is the top-level AutomaticBrewingCoffeeBE directory.
+AutomaticBrewingCoffeeApp/AutomaticBrewingCoffeeBE/
+
+# Legacy test utilities contain hardcoded Azure IoT credentials.
+AutomaticBrewingCoffeeKioskBE/ABC_Kiosk_BE/Tests/WorkflowExecutorTest/StepCommander - Copy.cs
+AutomaticBrewingCoffeeKioskBE/ABC_Kiosk_BE/Tests/WorkflowExecutorTest/StepSender.cs
+AutomaticBrewingCoffeeKioskBE/SugarDispenserController/SugarDispenser/test/project_Dat.py
+
+# Build and dependency output
+**/node_modules/
+**/.next/
+**/.dart_tool/
+**/build/
+**/bin/
+**/obj/
+**/coverage/
+**/dist/
+**/GeneratedPluginRegistrant.*
+**/flutter/generated_*
+
+# IDE and OS files
+.idea/
+.vscode/
+*.user
+*.suo
+*.swp
+Thumbs.db
+.DS_Store
+
+# Local Docker data
+**/*-data/
+**/docker-data/

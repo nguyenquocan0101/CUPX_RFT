@@ -1,0 +1,163 @@
+import { Calendar, Power, ShoppingCart, Store } from "lucide-react";
+import { Badge } from "../ui/badge";
+import { ColumnDef } from "@tanstack/react-table";
+import { Order } from "@/interfaces/order";
+import { EOrderStatus, EOrderStatusViMap, EOrderType, EOrderTypeViMap, EPaymentGateway, EPaymentGatewayViMap } from "@/enum/order";
+import { getOrderStatusColor } from "@/utils/color";
+import { ActionDropdown } from "../common";
+import Image from "next/image";
+import { images } from "@/public/assets";
+import { formatDate } from "@/utils/date";
+import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
+import { truncateMiddle } from "@/utils/text";
+
+const getOrderTypeConfig = (orderType: EOrderType) => {
+    switch (orderType) {
+        case EOrderType.Immediate:
+            return {
+                color: "bg-blue-500",
+                icon: <Store className="w-3 h-3 mr-1" />,
+            };
+        case EOrderType.PreOrder:
+            return {
+                color: "bg-amber-500",
+                icon: <ShoppingCart className="w-3 h-3 mr-1" />,
+            };
+        default:
+            return {
+                color: "bg-gray-500",
+                icon: <ShoppingCart className="w-3 h-3 mr-1" />,
+            };
+    }
+};
+
+export const columns = ({
+    onViewDetails,
+    onRefund,
+}: {
+    onViewDetails: (order: Order) => void;
+    onRefund: (order: Order) => void;
+}): ColumnDef<Order>[] => [
+        {
+            id: "orderCode",
+            header: "Mã đơn hàng",
+            cell: ({ row }) => {
+                const orderCode = row.original.orderCode as string
+
+
+                return (
+                    <div className="text-center">
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <span className="cursor-pointer">
+                                    {truncateMiddle(orderCode)}
+                                </span>
+                            </TooltipTrigger>
+                            <TooltipContent className="bg-black">
+                                <p className="font-mono">{orderCode}</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </div>
+                )
+            },
+        },
+        {
+            id: "orderType",
+            header: "Loại đơn hàng",
+            cell: ({ row }) => {
+                const orderType = row.original.orderType as EOrderType;
+                const orderTypeText = orderType ? EOrderTypeViMap[orderType] || "Chưa có" : "Chưa có";
+                const { color, icon } = getOrderTypeConfig(orderType);
+                return (
+                    <div className="flex justify-center items-center w-full">
+                        <Badge className={`flex items-center justify-center !w-fit !px-2 !py-[2px] !rounded-full !text-white !text-xs ${color}`}>
+                            {icon}
+                            {orderTypeText}
+                        </Badge>
+                    </div>
+                );
+            },
+            enableSorting: false,
+        },
+        {
+            id: "paymentGateway",
+            header: "Phương thức thanh toán",
+            cell: ({ row }) => {
+                const paymentGateway: EPaymentGateway = row.original.paymentGateway;
+
+                const paymentLogoMap: Record<EPaymentGateway, string> = {
+                    [EPaymentGateway.MPOS]: images.mpos,
+                    [EPaymentGateway.VNPay]: images.vnpay,
+                };
+
+                const logoSrc = paymentLogoMap[paymentGateway];
+
+                return (
+                    <div className="flex justify-center items-center w-full">
+                        {logoSrc ? (
+                            <Image src={logoSrc} alt={paymentGateway} width={28} height={28} className="object-contain" />
+                        ) : (
+                            <span>Không rõ</span>
+                        )}
+                    </div>
+                );
+            },
+            enableSorting: false,
+        },
+        {
+            id: "status",
+            header: "Trạng thái",
+            cell: ({ row }) => {
+                const status: EOrderStatus = row.original.status;
+                const statusText = EOrderStatusViMap[status] ?? "Không rõ";
+                const statusColor = getOrderStatusColor(status);
+                return (
+                    <div className="flex justify-center items-center w-full">
+                        <Badge className={`flex items-center justify-center !w-fit !px-2 !py-[2px] !rounded-full !text-white !text-xs ${statusColor}`}>
+                            <Power className="w-3 h-3 mr-1" />
+                            {statusText}
+                        </Badge>
+                    </div>
+                );
+            },
+            enableSorting: false,
+        },
+        {
+            id: "finalAmount",
+            header: "Tổng số tiền",
+            cell: ({ row }) => {
+                const finalAmount = row.original.finalAmount;
+                return <div className="text-center">{finalAmount.toLocaleString()} VND</div>;
+            },
+        },
+        {
+            id: "createdDate",
+            accessorKey: "createdDate",
+            header: "Ngày tạo",
+            cell: ({ row }) => {
+                return (
+                    <div className="flex items-center justify-center">
+                        <Calendar className="h-4 w-4 mr-1 text-muted-foreground" />
+                        <span>{formatDate(row.original.createdDate)}</span>
+                    </div>
+                );
+            },
+        },
+        {
+            id: "actions",
+            header: "Hành động",
+            cell: ({ row }) => {
+                const order = row.original;
+
+                return (
+                    <ActionDropdown
+                        item={order}
+                        onCopy={(item) => navigator.clipboard.writeText(item.orderId)}
+                        onViewDetails={(item) => onViewDetails(item)}
+                        onRefund={order.status === EOrderStatus.Failed ? () => onRefund(order) : undefined}
+                    />
+                );
+            },
+            enableSorting: false,
+        },
+    ];

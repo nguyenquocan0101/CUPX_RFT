@@ -1,0 +1,6 @@
+@Kiosk.ApiService_HostAddress = http://localhost:5160
+
+GET {{Kiosk.ApiService_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

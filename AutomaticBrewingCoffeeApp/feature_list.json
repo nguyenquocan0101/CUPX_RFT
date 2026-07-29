@@ -1,0 +1,54 @@
+{
+  "features": [
+    {
+      "id": "hosted-wakelock-dependency",
+      "title": "Resolve wakelock_plus from a valid hosted dependency",
+      "user_visible_behavior": "so that flutter pub get and the Android build do not fail on a missing local package path",
+      "verification_command": "flutter pub get exits 0 and the lock/package metadata contains no path dependency for wakelock_plus",
+      "status": "passing",
+      "evidence": "flutter pub get exited 0; wakelock_plus 1.3.2 is hosted in pubspec.lock and .dart_tool/package_config.json",
+      "notes": "",
+      "priority": "P1"
+    },
+    {
+      "id": "android-release-build",
+      "title": "Build a release Android APK with the current Flutter stable SDK",
+      "user_visible_behavior": "so that the developer can produce an APK for Android testing",
+      "verification_command": "flutter build apk --release exits 0 and creates build/app/outputs/flutter-apk/app-release.apk",
+      "status": "active",
+      "evidence": "",
+      "notes": "",
+      "priority": "P1"
+    },
+    {
+      "id": "kiosk-screen-awake",
+      "title": "Preserve kiosk wake-lock behavior",
+      "user_visible_behavior": "so that the kiosk screen remains awake during the existing flow",
+      "verification_command": "WakelockPlus.enable/disable and Android WAKE_LOCK remain intact; device smoke test confirms the screen stays awake",
+      "status": "not_started",
+      "evidence": "",
+      "notes": "",
+      "priority": "P1"
+    },
+    {
+      "id": "single-android-gradle-source",
+      "title": "Use one unambiguous Gradle module configuration",
+      "user_visible_behavior": "so that Android builds are repeatable across environments",
+      "verification_command": "The app module has one confirmed active Gradle DSL/file and the build succeeds without duplicate-script ambiguity",
+      "status": "passing",
+      "evidence": "Gradle --info task evaluation loaded android/app/build.gradle; duplicate Kotlin DSL quarantined as build.gradle.kts.disabled",
+      "notes": "",
+      "priority": "P2"
+    },
+    {
+      "id": "production-signing",
+      "title": "Configure production APK signing",
+      "user_visible_behavior": "so that release artifacts can be published",
+      "verification_command": "Out of scope for the current test-APK plan",
+      "status": "not_started",
+      "evidence": "",
+      "notes": "Deferred until production release planning.",
+      "priority": "P3"
+    }
+  ]
+}

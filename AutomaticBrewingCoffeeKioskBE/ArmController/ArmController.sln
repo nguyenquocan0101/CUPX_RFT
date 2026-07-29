@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.8.34408.163
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FRRobot", "FRRobot\FRRobot.csproj", "{A50C0309-4334-4BED-9372-BD8B7D4D4654}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ArmController2", "ArmController2\ArmController2.csproj", "{9D5EDB20-739D-4EEF-92BA-318B21EBA5FF}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{A50C0309-4334-4BED-9372-BD8B7D4D4654}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A50C0309-4334-4BED-9372-BD8B7D4D4654}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A50C0309-4334-4BED-9372-BD8B7D4D4654}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A50C0309-4334-4BED-9372-BD8B7D4D4654}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9D5EDB20-739D-4EEF-92BA-318B21EBA5FF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9D5EDB20-739D-4EEF-92BA-318B21EBA5FF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9D5EDB20-739D-4EEF-92BA-318B21EBA5FF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9D5EDB20-739D-4EEF-92BA-318B21EBA5FF}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {B15EACF8-B311-40D4-BD14-6A3CCEB801D8}
+	EndGlobalSection
+EndGlobal
