@@ -26,14 +26,22 @@ namespace MixMachineController
             Console.WriteLine("[1] Loading environment variables...");
             DotEnv.Load(options: new DotEnvOptions(probeForEnv: true));
 
-            DEVICE_CONNECTION_STRING = Environment.GetEnvironmentVariable("DEVICE_PRIMARY_CONN_STR")!;
-            SERIAL_PORT = Environment.GetEnvironmentVariable("SERIAL_PORT")!;
+            var localHardware = string.Equals(Environment.GetEnvironmentVariable("HARDWARE_MODE"), "real", StringComparison.OrdinalIgnoreCase);
+            DEVICE_CONNECTION_STRING = Environment.GetEnvironmentVariable("DEVICE_PRIMARY_CONN_STR") ?? string.Empty;
+            SERIAL_PORT = Environment.GetEnvironmentVariable("SERIAL_PORT") ?? throw new InvalidOperationException("SERIAL_PORT is required.");
             BAUD_RATE = int.TryParse(Environment.GetEnvironmentVariable("BAUD_RATE"), out int parsedBaud) ? parsedBaud : 9600;
             Console.WriteLine("[-] Environment variables loaded.");
 
-            Console.WriteLine("[2] Connecting to Azure IoT Hub...");
-            var deviceClient = DeviceClient.CreateFromConnectionString(DEVICE_CONNECTION_STRING);
-            Console.WriteLine("[-] Connected to Azure IoT Hub.");
+            DeviceClient? deviceClient = null;
+            var deviceId = localHardware
+                ? Environment.GetEnvironmentVariable("DEVICE_ID") ?? throw new InvalidOperationException("DEVICE_ID is required in HARDWARE_MODE=real.")
+                : GetDeviceIdFromConnStr(DEVICE_CONNECTION_STRING);
+            if (!localHardware)
+            {
+                Console.WriteLine("[2] Connecting to Azure IoT Hub...");
+                deviceClient = DeviceClient.CreateFromConnectionString(DEVICE_CONNECTION_STRING);
+                Console.WriteLine("[-] Connected to Azure IoT Hub.");
+            }
 
             Console.WriteLine("[3] Connecting to device via Serial Port...");
             pinActivator = new PinActivator(SERIAL_PORT, BAUD_RATE);
@@ -48,7 +56,10 @@ namespace MixMachineController
 
             Console.WriteLine("[4] Setting up RabbitMQ connection...");
             var services = new ServiceCollection();
-            services.AddOriginRabitMq("localhost", "guest", "guest");
+            services.AddOriginRabitMq(
+                Environment.GetEnvironmentVariable("RABBITMQ_HOST") ?? "localhost",
+                Environment.GetEnvironmentVariable("RABBITMQ_USERNAME") ?? "guest",
+                Environment.GetEnvironmentVariable("RABBITMQ_PASSWORD") ?? "guest");
             var provider = services.BuildServiceProvider();
             var exchangeBindings = new List<ExchangeBindingConfig>
             {
@@ -66,14 +77,59 @@ namespace MixMachineController
             publisher = provider.GetRequiredService<IRabbitMqPublisher<UpdateStepStateMessages>>();
             Console.WriteLine("[-] RabbitMQ configured and exchange/queue declared.");
 
-            Console.WriteLine("[5] Registering IoT Hub method handlers...");
-            //Define iothub invoke method handler
-            await deviceClient.SetMethodHandlerAsync("run", RunOnTime, pinActivator);
-            Console.WriteLine("[✓] IoT Hub method handlers registered.");
+            if (localHardware)
+            {
+                var localCommandHost = new LocalDeviceCommandHost(
+                    deviceId,
+                    HandleLocalCommandAsync,
+                    new LocalDeviceCommandHostOptions
+                    {
+                        JournalPath = Path.Combine(Directory.GetCurrentDirectory(), ".local", "runtime", "controller-mix.db")
+                    });
+                await localCommandHost.StartAsync();
+            }
+            else
+            {
+                Console.WriteLine("[5] Registering IoT Hub method handlers...");
+                await deviceClient!.SetMethodHandlerAsync("run", RunOnTime, pinActivator);
+                Console.WriteLine("[✓] IoT Hub method handlers registered.");
+            }
 
             Console.WriteLine("Mix Machine Controller is now running.");
             Console.WriteLine("========================================================");
             await Task.Delay(-1);
+        }
+
+        private static string GetDeviceIdFromConnStr(string connectionString)
+        {
+            if (string.IsNullOrWhiteSpace(connectionString))
+                return string.Empty;
+            return connectionString
+                .Split(';')
+                .FirstOrDefault(part => part.StartsWith("DeviceId=", StringComparison.OrdinalIgnoreCase))?
+                .Split('=', 2).ElementAtOrDefault(1) ?? string.Empty;
+        }
+
+        private static async Task<DeviceCommandResult> HandleLocalCommandAsync(DeviceCommandRequest request, CancellationToken cancellationToken)
+        {
+            var methodRequest = new MethodRequest(
+                request.Method,
+                Encoding.UTF8.GetBytes(LocalDeviceCommandPayload.ToJson(request.Parameters)));
+            var response = request.Method switch
+            {
+                "run" => await RunOnTime(methodRequest, pinActivator),
+                _ => throw new InvalidOperationException($"Unsupported mix device method: {request.Method}")
+            };
+            return new DeviceCommandResult(
+                request.CommandId,
+                request.SchemaVersion,
+                request.CorrelationId,
+                request.DeviceId,
+                response.Status == 200 ? "Completed" : "Failed",
+                new Dictionary<string, string> { ["result"] = response.ResultAsJson },
+                response.Status == 200 ? null : "DEVICE_METHOD_FAILURE",
+                response.Status == 200 ? null : response.ResultAsJson,
+                DateTimeOffset.UtcNow);
         }
 
         /// <summary>

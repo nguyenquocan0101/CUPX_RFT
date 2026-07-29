@@ -15,9 +15,7 @@
 	<ItemGroup>
 		<ProjectReference Include="..\..\Shared\SerialDeviceConnector\SerialDeviceConnector.csproj" />
 		<ProjectReference Include="..\..\Shared\Shared.RabbitMqPublisher\Shared.RabbitMqPublisher.csproj" />
-	  <Reference Include="Shared.MessageStore">
-	    <HintPath>..\..\Libs\Shared.MessageStore.dll</HintPath>
-	  </Reference>
+	  <ProjectReference Include="..\..\Shared\Shared.MessageStore\Shared.MessageStore.csproj" />
 	</ItemGroup>
 	<ItemGroup>
 	  <None Update=".env">

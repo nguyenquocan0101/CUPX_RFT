@@ -47,15 +47,22 @@ public class Program
         Console.WriteLine("[1] Loading environment variables...");
         DotEnv.Load(options: new DotEnvOptions(probeForEnv: true));
 
-        DEVICE_CONNECTION_STRING = Environment.GetEnvironmentVariable("DEVICE_PRIMARY_CONN_STR")!;
-        SERIAL_PORT = Environment.GetEnvironmentVariable("SERIAL_PORT")!;
+        var localHardware = string.Equals(Environment.GetEnvironmentVariable("HARDWARE_MODE"), "real", StringComparison.OrdinalIgnoreCase);
+        DEVICE_CONNECTION_STRING = Environment.GetEnvironmentVariable("DEVICE_PRIMARY_CONN_STR") ?? string.Empty;
+        SERIAL_PORT = Environment.GetEnvironmentVariable("SERIAL_PORT") ?? throw new InvalidOperationException("SERIAL_PORT is required.");
         BAUD_RATE = int.TryParse(Environment.GetEnvironmentVariable("BAUD_RATE"), out int parsedBaud) ? parsedBaud : 115200;
         Console.WriteLine("[-] Environment variables loaded.");
 
-        // Initialize Azure IoT device client
-        Console.WriteLine("[2] Connecting to Azure IoT Hub...");
-        var deviceClient = DeviceClient.CreateFromConnectionString(DEVICE_CONNECTION_STRING);
-        Console.WriteLine("[-] Azure IoT Hub connected.");
+        DeviceClient? deviceClient = null;
+        var deviceId = localHardware
+            ? Environment.GetEnvironmentVariable("DEVICE_ID") ?? throw new InvalidOperationException("DEVICE_ID is required in HARDWARE_MODE=real.")
+            : GetDeviceIdFromConnStr(DEVICE_CONNECTION_STRING);
+        if (!localHardware)
+        {
+            Console.WriteLine("[2] Connecting to Azure IoT Hub...");
+            deviceClient = DeviceClient.CreateFromConnectionString(DEVICE_CONNECTION_STRING);
+            Console.WriteLine("[-] Azure IoT Hub connected.");
+        }
 
         // Initialize Coffee Machine
         Console.WriteLine("[-] Initializing Coffee Machine on port {0} with baud rate {1}...", SERIAL_PORT, BAUD_RATE);
@@ -71,12 +78,26 @@ public class Program
 
         Console.WriteLine("[-] Coffee Machine connected.");
 
-        // Set IoT Hub method handlers
-        Console.WriteLine("[4] Registering IoT direct method handlers...");
-        await deviceClient.SetMethodHandlerAsync("getStatus", GetStatusMethod, cf);
-        await deviceClient.SetMethodHandlerAsync("makeDrink", MakeDrinkMethod, cf);
-        await deviceClient.SetMethodHandlerAsync("shutdown", ShutDownMethod, cf);
-        await deviceClient.SetMethodHandlerAsync("clean", CleanMethod, cf);
+        LocalDeviceCommandHost? localCommandHost = null;
+        if (localHardware)
+        {
+            localCommandHost = new LocalDeviceCommandHost(
+                deviceId,
+                HandleLocalCommandAsync,
+                new LocalDeviceCommandHostOptions
+                {
+                    JournalPath = Path.Combine(Directory.GetCurrentDirectory(), ".local", "runtime", "controller-coffee.db")
+                });
+            await localCommandHost.StartAsync(_cts.Token);
+        }
+        else
+        {
+            Console.WriteLine("[4] Registering IoT direct method handlers...");
+            await deviceClient!.SetMethodHandlerAsync("getStatus", GetStatusMethod, cf);
+            await deviceClient.SetMethodHandlerAsync("makeDrink", MakeDrinkMethod, cf);
+            await deviceClient.SetMethodHandlerAsync("shutdown", ShutDownMethod, cf);
+            await deviceClient.SetMethodHandlerAsync("clean", CleanMethod, cf);
+        }
 
         //demo update 2 step cùng 1 lúc
         //await deviceClient.SetMethodHandlerAsync("cc", CC, null);
@@ -92,7 +113,10 @@ public class Program
         var host = Host.CreateDefaultBuilder(args)
              .ConfigureServices((context, services) =>
              {
-                 services.AddOriginRabitMq("localhost", "guest", "guest");
+                 services.AddOriginRabitMq(
+                     Environment.GetEnvironmentVariable("RABBITMQ_HOST") ?? "localhost",
+                     Environment.GetEnvironmentVariable("RABBITMQ_USERNAME") ?? "guest",
+                     Environment.GetEnvironmentVariable("RABBITMQ_PASSWORD") ?? "guest");
                  var provider = services.BuildServiceProvider();
                  var exchangeBindings = new List<ExchangeBindingConfig>
                 {
@@ -111,13 +135,38 @@ public class Program
                  statusPublisher = provider.GetRequiredService<IRabbitMqPublisher<UpdateStatusStepMsg>>();
                  deviceLabelMsgPublisher = provider.GetRequiredService<IRabbitMqPublisher<DeviceLabelMessage>>();
                  services.AddHostedService(src =>
-                    new StatusWatcher(cf, GetDeviceIdFromConnStr(DEVICE_CONNECTION_STRING), statusPublisher, deviceLabelMsgPublisher));
+                     new StatusWatcher(cf, deviceId, statusPublisher, deviceLabelMsgPublisher));
              })
             .Build();
 
         _ = Task.Run(() => host.RunAsync());
 
         await Task.Delay(-1);
+    }
+
+    private static async Task<DeviceCommandResult> HandleLocalCommandAsync(DeviceCommandRequest request, CancellationToken cancellationToken)
+    {
+        var methodRequest = new MethodRequest(
+            request.Method,
+            Encoding.UTF8.GetBytes(LocalDeviceCommandPayload.ToJson(request.Parameters)));
+        var response = request.Method switch
+        {
+            "getStatus" => await GetStatusMethod(methodRequest, cf),
+            "makeDrink" => await MakeDrinkMethod(methodRequest, cf),
+            "shutdown" => await ShutDownMethod(methodRequest, cf),
+            "clean" => await CleanMethod(methodRequest, cf),
+            _ => throw new InvalidOperationException($"Unsupported coffee device method: {request.Method}")
+        };
+        return new DeviceCommandResult(
+            request.CommandId,
+            request.SchemaVersion,
+            request.CorrelationId,
+            request.DeviceId,
+            response.Status == 200 ? "Completed" : "Failed",
+            new Dictionary<string, string> { ["result"] = response.ResultAsJson },
+            response.Status == 200 ? null : "DEVICE_METHOD_FAILURE",
+            response.Status == 200 ? null : response.ResultAsJson,
+            DateTimeOffset.UtcNow);
     }
 
     private static string GetDeviceIdFromConnStr(string connectionString)

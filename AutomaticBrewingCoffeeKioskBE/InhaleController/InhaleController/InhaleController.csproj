@@ -13,12 +13,7 @@
 	  <PackageReference Include="dotenv.net" Version="3.2.1" />
     <ProjectReference Include="..\..\Shared\SerialDeviceConnector\SerialDeviceConnector.csproj" />
     <ProjectReference Include="..\..\Shared\Shared.RabbitMqPublisher\Shared.RabbitMqPublisher.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Reference Include="Shared.MessageStore">
-      <HintPath>..\..\Libs\Shared.MessageStore.dll</HintPath>
-    </Reference>
+    <ProjectReference Include="..\..\Shared\Shared.MessageStore\Shared.MessageStore.csproj" />
   </ItemGroup>
 
   <ItemGroup>

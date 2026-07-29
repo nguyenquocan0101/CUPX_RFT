@@ -157,6 +157,20 @@ powershell -ExecutionPolicy Bypass -File .\scripts\local\Get-SerialPortInventory
 powershell -ExecutionPolicy Bypass -File .\scripts\local\Test-HardwareProfile.ps1 -HardwareMode real
 ```
 
+After replacing the profile with verified wired ports, start a native .NET 8
+controller through the local RabbitMQ command bus. This launcher reads the
+ignored `.local/compose-vars`, sets `HARDWARE_MODE=real`, and writes logs under
+`.local/runtime`:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\local\Start-HardwareController.ps1 `
+  -Controller Coffee -DeviceId coffee-local -SerialPort COM7
+```
+
+Supported controllers are `Coffee`, `CupDrop`, `IceMaker`, `Inhale`, and
+`Mix`. Do not use Bluetooth COM ports for machine controllers. ArmController2
+still requires its separate .NET Framework local-ingress bridge.
+
 Run the final local gates after the APIs are healthy:
 
 ```powershell

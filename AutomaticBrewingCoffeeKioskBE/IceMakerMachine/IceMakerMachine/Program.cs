@@ -51,11 +51,17 @@ public class Program
             Console.WriteLine("[✓] File Logger created.");
 
             DotEnv.Load(options: new DotEnvOptions(probeForEnv: true));
-            DEVICE_CONNECTION_STRING = Environment.GetEnvironmentVariable("DEVICE_PRIMARY_CONN_STR")!;
-            SERIAL_PORT = Environment.GetEnvironmentVariable("SERIAL_PORT") ?? "COM6";
+            var localHardware = string.Equals(Environment.GetEnvironmentVariable("HARDWARE_MODE"), "real", StringComparison.OrdinalIgnoreCase);
+            DEVICE_CONNECTION_STRING = Environment.GetEnvironmentVariable("DEVICE_PRIMARY_CONN_STR") ?? string.Empty;
+            SERIAL_PORT = Environment.GetEnvironmentVariable("SERIAL_PORT") ?? throw new InvalidOperationException("SERIAL_PORT is required.");
             BAUD_RATE = int.TryParse(Environment.GetEnvironmentVariable("BAUD_RATE"), out int parsedBaud) ? parsedBaud : 115200;
 
-            var deviceClient = DeviceClient.CreateFromConnectionString(DEVICE_CONNECTION_STRING);
+            DeviceClient? deviceClient = null;
+            var deviceId = localHardware
+                ? Environment.GetEnvironmentVariable("DEVICE_ID") ?? throw new InvalidOperationException("DEVICE_ID is required in HARDWARE_MODE=real.")
+                : GetDeviceIdFromConnStr(DEVICE_CONNECTION_STRING);
+            if (!localHardware)
+                deviceClient = DeviceClient.CreateFromConnectionString(DEVICE_CONNECTION_STRING);
             iceMachine = new IceMachine(SERIAL_PORT, BAUD_RATE);
             //đăng kí sự kiện tắt kết nối cho serial
             AppDomain.CurrentDomain.ProcessExit += (sender, e) =>
@@ -66,16 +72,33 @@ public class Program
 
             };
             iceMachine.Connect();
-            await deviceClient.SetMethodHandlerAsync("queryStatus", QueryStatusMethod, iceMachine);
-            //await deviceClient.SetMethodHandlerAsync("queryParams", QueryParamsMethod, iceMachine);
-            //await deviceClient.SetMethodHandlerAsync("setParams", SetParamsMethod, iceMachine);
-            await deviceClient.SetMethodHandlerAsync("execute", ExcecuteMethod, iceMachine);
-            await deviceClient.SetMethodHandlerAsync("powerOff", PowerOffMethod, iceMachine);
+            if (localHardware)
+            {
+                var localCommandHost = new LocalDeviceCommandHost(
+                    deviceId,
+                    HandleLocalCommandAsync,
+                    new LocalDeviceCommandHostOptions
+                    {
+                        JournalPath = Path.Combine(Directory.GetCurrentDirectory(), ".local", "runtime", "controller-ice-maker.db")
+                    });
+                await localCommandHost.StartAsync(_cts.Token);
+            }
+            else
+            {
+                await deviceClient!.SetMethodHandlerAsync("queryStatus", QueryStatusMethod, iceMachine);
+                //await deviceClient.SetMethodHandlerAsync("queryParams", QueryParamsMethod, iceMachine);
+                //await deviceClient.SetMethodHandlerAsync("setParams", SetParamsMethod, iceMachine);
+                await deviceClient.SetMethodHandlerAsync("execute", ExcecuteMethod, iceMachine);
+                await deviceClient.SetMethodHandlerAsync("powerOff", PowerOffMethod, iceMachine);
+            }
 
             var host = Host.CreateDefaultBuilder(args)
                        .ConfigureServices((context, services) =>
                        {
-                           services.AddOriginRabitMq("localhost", "guest", "guest");
+                           services.AddOriginRabitMq(
+                               Environment.GetEnvironmentVariable("RABBITMQ_HOST") ?? "localhost",
+                               Environment.GetEnvironmentVariable("RABBITMQ_USERNAME") ?? "guest",
+                               Environment.GetEnvironmentVariable("RABBITMQ_PASSWORD") ?? "guest");
                            var provider = services.BuildServiceProvider();
                            var exchangeBindings = new List<ExchangeBindingConfig>
                            {
@@ -94,7 +117,7 @@ public class Program
                            statusPublisher = provider.GetRequiredService<IRabbitMqPublisher<UpdateStatusStepMsg>>();
                            deviceLabelMsgPublisher = provider.GetRequiredService<IRabbitMqPublisher<DeviceLabelMessage>>();
                            services.AddHostedService(src =>
-                               new StatusWatcher(iceMachine, GetDeviceIdFromConnStr(DEVICE_CONNECTION_STRING), statusPublisher, deviceLabelMsgPublisher));
+                                new StatusWatcher(iceMachine, deviceId, statusPublisher, deviceLabelMsgPublisher));
                        })
                        .Build();
 
@@ -107,6 +130,32 @@ public class Program
             Console.WriteLine("Exception while closing ");
         }
 
+    }
+
+    private static async Task<DeviceCommandResult> HandleLocalCommandAsync(DeviceCommandRequest request, CancellationToken cancellationToken)
+    {
+        var methodRequest = new MethodRequest(
+            request.Method,
+            Encoding.UTF8.GetBytes(LocalDeviceCommandPayload.ToJson(request.Parameters)));
+        var response = request.Method switch
+        {
+            "queryStatus" => await QueryStatusMethod(methodRequest, iceMachine),
+            "queryParams" => await QueryParamsMethod(methodRequest, iceMachine),
+            "setParams" => await SetParamsMethod(methodRequest, iceMachine),
+            "execute" => await ExcecuteMethod(methodRequest, iceMachine),
+            "powerOff" => await PowerOffMethod(methodRequest, iceMachine),
+            _ => throw new InvalidOperationException($"Unsupported ice-maker device method: {request.Method}")
+        };
+        return new DeviceCommandResult(
+            request.CommandId,
+            request.SchemaVersion,
+            request.CorrelationId,
+            request.DeviceId,
+            response.Status == 200 ? "Completed" : "Failed",
+            new Dictionary<string, string> { ["result"] = response.ResultAsJson },
+            response.Status == 200 ? null : "DEVICE_METHOD_FAILURE",
+            response.Status == 200 ? null : response.ResultAsJson,
+            DateTimeOffset.UtcNow);
     }
     private static string GetDeviceIdFromConnStr(string connectionString)
     {

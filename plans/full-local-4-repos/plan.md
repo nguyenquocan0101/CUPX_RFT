@@ -260,8 +260,8 @@ Confirmed by the user on 2026-07-29:
 - [x] Phase 04: Local integration providers (adjusted local scope; real payment deferred)
 - [x] Phase 05: Next.js and Flutter local configuration (Next build, URL scan, tracked sample cleanup and FVM Flutter analyze/test pass)
 - [x] Phase 06: Local command bus and simulator (RabbitMQ invoker wiring, durable simulator journal and representative workflow reaches Done/Observed under 30 seconds)
-- [ ] Phase 07: Real hardware controllers (native projects build and simulator journal is hardened; legacy controller programs still require a RabbitMQ local-ingress adapter and verified wired COM mappings)
-- [ ] Phase 08: E2E, security and runbook (all local/simulator gates pass; final real-controller gate remains blocked by the missing adapter and physical hardware)
+- [ ] Phase 07: Real hardware controllers (five .NET 8 controllers use the local RabbitMQ ingress; ArmController2 compatibility bridge and verified wired COM mappings remain)
+- [ ] Phase 08: E2E, security and runbook (all local/simulator gates pass; final real-controller gate remains blocked by ArmController2 and physical hardware)
 
 ## Session Notes
 <!-- Updated by cook automatically - do not edit manually -->
@@ -285,7 +285,7 @@ Confirmed by the user on 2026-07-29:
 Phase 04 verification completed: local auth, MinIO product image round-trip, Mailpit transport, sandbox payment UI, and durable Main -> Kiosk webhook inbox/outbox replay after Main API restart.
 - Phase 05: Next.js production build, executable URL scan, tracked frontend sample localhost cleanup, FVM 3.41.9 Flutter analyze/test pass.
 - Phase 06: RabbitMQ device-command publish/consume, startup topology, RabbitMQ invoker wiring, SQLite-journal simulator self-test and representative workflow Done/Observed E2E pass. Restart durability also passes with `Test-SimulatorWorkflow.ps1 -RestartKioskAfterEnqueue`: re-delivered workflow updates its CouchDB delivery tag and completes after Kiosk restart.
-- Phase 07: Serial inventory confirms only Bluetooth COM17/COM18; profile preflight blocks real mode until verified wired mappings exist. Five native controller projects plus ArmController/FRRobot and ArmController2 build with installed .NET Framework 4.8.1 tooling and restored packages.
+- Phase 07: Serial inventory confirms only Bluetooth COM17/COM18; profile preflight blocks real mode until verified wired mappings exist. Five .NET 8 native controller projects now select local RabbitMQ ingress in `HARDWARE_MODE=real` and build with the shared durable command host; ArmController/FRRobot and ArmController2 build with installed .NET Framework 4.8.1 tooling but Arm local ingress remains pending.
 - Phase 08: Start-All, Stop-All, Smoke-Test, Test-Persistence, Reset-LocalState, Test-SourceScan, Test-LocalPerformance, Test-LocalBusinessFlow and troubleshooting runbook added. Local smoke, persistence, simulator restart durability, menu/order business flow through `Completed`, idempotent sandbox callback replay, 100-request `/health` p95, source scan, reachable-history audit and clean clone verification pass.
 
 ## Definition Of Done

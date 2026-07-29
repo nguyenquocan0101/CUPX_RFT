@@ -45,13 +45,19 @@ public class Program
         Console.WriteLine("[✓] File Logger created.");
         Console.WriteLine("[1] Load Environment");
         DotEnv.Load(options: new DotEnvOptions(probeForEnv: true));
-        DEVICE_CONNECTION_STRING = Environment.GetEnvironmentVariable("DEVICE_PRIMARY_CONN_STR")!;
-        SERIAL_PORT = Environment.GetEnvironmentVariable("SERIAL_PORT") ?? "COM4";
+        var localHardware = string.Equals(Environment.GetEnvironmentVariable("HARDWARE_MODE"), "real", StringComparison.OrdinalIgnoreCase);
+        DEVICE_CONNECTION_STRING = Environment.GetEnvironmentVariable("DEVICE_PRIMARY_CONN_STR") ?? string.Empty;
+        SERIAL_PORT = Environment.GetEnvironmentVariable("SERIAL_PORT") ?? throw new InvalidOperationException("SERIAL_PORT is required.");
         BAUD_RATE = int.TryParse(Environment.GetEnvironmentVariable("BAUD_RATE"), out int parsedBaud) ? parsedBaud : 115200;
         Console.WriteLine("[✓] Environment Loaded");
 
         Console.WriteLine("[2] Initialize variables");
-        var deviceClient = DeviceClient.CreateFromConnectionString(DEVICE_CONNECTION_STRING);
+        DeviceClient? deviceClient = null;
+        var deviceId = localHardware
+            ? Environment.GetEnvironmentVariable("DEVICE_ID") ?? throw new InvalidOperationException("DEVICE_ID is required in HARDWARE_MODE=real.")
+            : GetDeviceIdFromConnStr(DEVICE_CONNECTION_STRING);
+        if (!localHardware)
+            deviceClient = DeviceClient.CreateFromConnectionString(DEVICE_CONNECTION_STRING);
         Console.WriteLine("[2] Initializing Cup Dropping Machine on port {0} with baud rate {1}...", SERIAL_PORT, BAUD_RATE);
         cd = new CupDroppingMachine(SERIAL_PORT, BAUD_RATE);
         //đăng kí sự kiện tắt kết nối cho serial
@@ -64,10 +70,24 @@ public class Program
         cd.Connect();
         Console.WriteLine("[✓] Initialize variables completed");
 
-        Console.WriteLine("[3] Declare invoke methods");
-        await deviceClient.SetMethodHandlerAsync("getStatus", GetStatusMethod, cd);
-        await deviceClient.SetMethodHandlerAsync("dropCup", DropCupMethod, cd);
-        await deviceClient.SetMethodHandlerAsync("shutdown", ShutDownMethod, cd);
+        if (localHardware)
+        {
+            var localCommandHost = new LocalDeviceCommandHost(
+                deviceId,
+                HandleLocalCommandAsync,
+                new LocalDeviceCommandHostOptions
+                {
+                    JournalPath = Path.Combine(Directory.GetCurrentDirectory(), ".local", "runtime", "controller-cup-drop.db")
+                });
+            await localCommandHost.StartAsync(_cts.Token);
+        }
+        else
+        {
+            Console.WriteLine("[3] Declare invoke methods");
+            await deviceClient!.SetMethodHandlerAsync("getStatus", GetStatusMethod, cd);
+            await deviceClient.SetMethodHandlerAsync("dropCup", DropCupMethod, cd);
+            await deviceClient.SetMethodHandlerAsync("shutdown", ShutDownMethod, cd);
+        }
         Console.WriteLine("[✓] Declare invoke methods completed");
 
         Console.WriteLine("[4] Starting background services...");
@@ -78,7 +98,10 @@ public class Program
         var host = Host.CreateDefaultBuilder(args)
             .ConfigureServices((context, services) =>
             {
-                services.AddOriginRabitMq("localhost", "guest", "guest");
+                services.AddOriginRabitMq(
+                    Environment.GetEnvironmentVariable("RABBITMQ_HOST") ?? "localhost",
+                    Environment.GetEnvironmentVariable("RABBITMQ_USERNAME") ?? "guest",
+                    Environment.GetEnvironmentVariable("RABBITMQ_PASSWORD") ?? "guest");
                 var provider = services.BuildServiceProvider();
                 var exchangeBindings = new List<ExchangeBindingConfig>
                 {
@@ -98,13 +121,37 @@ public class Program
                 deviceLabelPublisher = provider.GetRequiredService<IRabbitMqPublisher<DeviceLabelMessage>>();
 
                 services.AddHostedService(src =>
-                    new StatusWatcher(cd, GetDeviceIdFromConnStr(DEVICE_CONNECTION_STRING), statusPublisher, deviceLabelPublisher));
+                    new StatusWatcher(cd, deviceId, statusPublisher, deviceLabelPublisher));
             })
             .Build();
         _ = Task.Run(() => host.RunAsync());
 
         await Task.Delay(-1);
 
+    }
+
+    private static async Task<DeviceCommandResult> HandleLocalCommandAsync(DeviceCommandRequest request, CancellationToken cancellationToken)
+    {
+        var methodRequest = new MethodRequest(
+            request.Method,
+            Encoding.UTF8.GetBytes(LocalDeviceCommandPayload.ToJson(request.Parameters)));
+        var response = request.Method switch
+        {
+            "getStatus" => await GetStatusMethod(methodRequest, cd),
+            "dropCup" => await DropCupMethod(methodRequest, cd),
+            "shutdown" => await ShutDownMethod(methodRequest, cd),
+            _ => throw new InvalidOperationException($"Unsupported cup-drop device method: {request.Method}")
+        };
+        return new DeviceCommandResult(
+            request.CommandId,
+            request.SchemaVersion,
+            request.CorrelationId,
+            request.DeviceId,
+            response.Status == 200 ? "Completed" : "Failed",
+            new Dictionary<string, string> { ["result"] = response.ResultAsJson },
+            response.Status == 200 ? null : "DEVICE_METHOD_FAILURE",
+            response.Status == 200 ? null : response.ResultAsJson,
+            DateTimeOffset.UtcNow);
     }
 
     private static string GetDeviceIdFromConnStr(string connectionString)

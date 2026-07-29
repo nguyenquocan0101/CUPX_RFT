@@ -18,18 +18,17 @@
 - `AutomaticBrewingCoffeeKioskBE/SugarDispenserController/SugarDispenser/main/main.py`
 - `AutomaticBrewingCoffeeKioskBE/SugarDispenserController/SugarDispenser/requirements.txt`
 
-Current `Program.cs` files create Azure `DeviceClient` and register direct-method handlers. Existing serial/device implementation should remain; only command ingress and result egress change.
+The five .NET 8 controller entry points now select the ingress by `HARDWARE_MODE`: `real` uses the shared local RabbitMQ command host and `azure` keeps the existing `DeviceClient` direct methods. Existing serial/device implementation remains unchanged. ArmController2 is still a .NET Framework 4.8.1 compatibility exception and has not yet been moved to the local ingress.
 
 ## Planned Shared Files
 
 Create where target-framework compatibility permits:
 
-- `Shared/Shared.DeviceCommandHost/Shared.DeviceCommandHost.csproj`
-- RabbitMQ consumer/result publisher, command deduplication and graceful shutdown helpers
-- durable local SQLite command journal and operator reconciliation command
+- `Shared/Shared.RabbitMqPublisher/LocalDeviceCommandHost.cs`
+- RabbitMQ consumer/result publisher, command deduplication and durable SQLite command journal
 - per-controller local settings examples with placeholders
 - `scripts/local/Get-SerialPortInventory.ps1`
-- `scripts/local/Start-HardwareControllers.ps1`
+- `scripts/local/Start-HardwareController.ps1`
 - contract tests that replay the Phase 06 command fixtures
 
 If `ArmController2` cannot reference the shared project due to target framework constraints, add a narrowly scoped native Windows bridge process for Arm only. Do not retarget or rewrite the robot driver as part of MVP.
@@ -59,6 +58,7 @@ If `ArmController2` cannot reference the shared project due to target framework 
 Get-CimInstance Win32_SerialPort | Select-Object DeviceID,Name,PNPDeviceID
 powershell -ExecutionPolicy Bypass -File .\scripts\local\Get-SerialPortInventory.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\local\Test-HardwareProfile.ps1 -HardwareMode real -ProfilePath .\config\hardware-profiles.local.example.json
+powershell -ExecutionPolicy Bypass -File .\scripts\local\Start-HardwareController.ps1 -Controller Coffee -DeviceId coffee-local -SerialPort COM7
 dotnet build .\AutomaticBrewingCoffeeKioskBE\CoffeeMachineController\CoffeeMachineController\CoffeeMachineController.csproj
 dotnet build .\AutomaticBrewingCoffeeKioskBE\CupDropMachineController\CupDropMachineController\CupDropMachineController.csproj
 dotnet build .\AutomaticBrewingCoffeeKioskBE\IceMakerMachine\IceMakerMachine\IceMakerMachine.csproj
@@ -69,7 +69,7 @@ $msbuild = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere
 if ($LASTEXITCODE -ne 0) { throw "ArmController MSBuild failed" }
 ```
 
-Preflight verifies the .NET Framework 4.8.1 targeting pack, Visual Studio MSBuild, `packages.config` restore and required native robot driver. All five native controller projects plus ArmController/FRRobot and ArmController2 now build on this host. The simulator journal self-test also verifies restart conversion to `Unknown`, explicit operator reconciliation and idempotent replay. A source audit shows the legacy native `Program.cs` entry points still instantiate Azure `DeviceClient` directly; the RabbitMQ local-ingress adapter described by this phase is therefore still outstanding for real controller startup. The current machine has only Bluetooth COM17/COM18, so the example profile also intentionally fails real mode. Sugar is not started or verified in this MVP.
+Preflight verifies the .NET Framework 4.8.1 targeting pack, Visual Studio MSBuild, `packages.config` restore and required native robot driver. All five .NET 8 native controller projects plus ArmController/FRRobot and ArmController2 build on this host. The shared local ingress host creates one durable queue and SQLite journal per controller; startup converts interrupted `Executing` rows to `Unknown` and does not automatically retry physical actions. A Coffee controller smoke run with `HARDWARE_MODE=real`, fake `COM99`, and no Azure credential created `device-command.local-coffee-smoke` and `.local/runtime/controller-coffee.db`. The current machine has only Bluetooth COM17/COM18, so the example profile intentionally fails real mode. ArmController2 local ingress and Sugar are not started or verified in this MVP.
 
 Hardware acceptance uses a dry-run/status command first, then one operator-observed representative workflow. It also kills one controller after the journal reaches `Executing` and verifies restart reports `Unknown` without repeating movement. Record command IDs, device IDs, COM mappings and results without recording connection strings/secrets.
 
@@ -84,7 +84,7 @@ The journal records the operator decision in `DeviceCommandReconciliations`; it 
 
 ## Gate
 
-- Every controller needed by the representative workflow builds and starts without Azure credentials. **Not yet met:** the current native entry points still use Azure direct-method ingress.
+- The five .NET 8 controllers build and their local RabbitMQ ingress starts without Azure credentials. **Not yet met:** ArmController2 still needs the compatibility bridge and no verified wired COM mapping is present on this host.
 - Only configured COM ports are opened.
 - Status/dry-run commands pass before any movement/dispense command.
 - One representative real-hardware workflow completes; failures surface as device errors, not cloud/network errors.
