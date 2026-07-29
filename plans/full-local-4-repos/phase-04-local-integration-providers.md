@@ -101,7 +101,7 @@ dotnet test .\AutomaticBrewingCoffeeBE\AutomaticBrewingCoffee.Main\Services.Test
 Invoke-WebRequest http://localhost:9000/minio/health/live -UseBasicParsing
 Invoke-WebRequest http://localhost:8025/api/v1/messages -UseBasicParsing
 powershell -ExecutionPolicy Bypass -File .\scripts\local\Test-MinioObjectStorage.ps1
-powershell -ExecutionPolicy Bypass -File .\scripts\local\Test-LocalWebhookPersistence.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\local\Test-LocalWebhookPersistence.ps1 -RestartMainApi
 ```
 
 Integration sequence:
@@ -114,7 +114,7 @@ Integration sequence:
 6. Replay the same callback twice, race two callbacks concurrently and replay after an API restart.
 7. Verify one payment state transition, one order transition and compatible SignalR event.
 8. Transition a second mock payment through `Refunded` and verify the existing refund contract.
-9. Trigger Main→Kiosk health webhook, verify API-key authentication, durable inbox/outbox state and replay after a Main API restart.
+9. Trigger Main→Kiosk health webhook, verify API-key authentication, durable inbox/outbox state, restart the Main API process, and replay the same event ID.
 
 ## Gate
 

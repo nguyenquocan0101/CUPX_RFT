@@ -2,7 +2,9 @@
 param(
     [string]$BaseUrl = 'http://localhost:5100',
     [string]$EventId = "phase4-webhook-$([guid]::NewGuid().ToString('N'))",
-    [switch]$ReplayOnly
+    [switch]$ReplayOnly,
+    [switch]$RestartMainApi,
+    [int]$RestartTimeoutSeconds = 60
 )
 
 $ErrorActionPreference = 'Stop'
@@ -31,6 +33,77 @@ $requestBody = @{
 } | ConvertTo-Json -Depth 5
 $headers = @{ 'X-API-Key' = $values['LocalSeed__KioskApiKey'] }
 
+if ($ReplayOnly -and $RestartMainApi) {
+    throw '-ReplayOnly and -RestartMainApi cannot be combined.'
+}
+
+function Wait-MainApi {
+    param([int]$TimeoutSeconds)
+
+    $deadline = (Get-Date).AddSeconds($TimeoutSeconds)
+    do {
+        try {
+            $health = Invoke-WebRequest -UseBasicParsing -Uri "$BaseUrl/health" -TimeoutSec 3
+            if ($health.StatusCode -eq 200) { return }
+        }
+        catch {
+            Start-Sleep -Seconds 1
+        }
+    } while ((Get-Date) -lt $deadline)
+
+    throw "Main API did not become healthy within $TimeoutSeconds seconds."
+}
+
+function Stop-ProcessTree {
+    param([int]$RootId)
+
+    $children = @(Get-CimInstance Win32_Process -Filter "ParentProcessId = $RootId" -ErrorAction SilentlyContinue)
+    foreach ($child in $children) { Stop-ProcessTree -RootId $child.ProcessId }
+    if (Get-Process -Id $RootId -ErrorAction SilentlyContinue) {
+        Stop-Process -Id $RootId -Force -ErrorAction Stop
+    }
+}
+
+function Restart-MainApi {
+    $listener = Get-NetTCPConnection -State Listen -LocalPort 5100 -ErrorAction SilentlyContinue |
+        Select-Object -First 1
+    if (-not $listener) {
+        throw 'Cannot restart Main API because port 5100 has no listener.'
+    }
+
+    $process = Get-Process -Id $listener.OwningProcess -ErrorAction Stop
+    $processPath = $process.Path
+    $repoRootPrefix = $repoRoot.TrimEnd('\') + '\'
+    if ([string]::IsNullOrWhiteSpace($processPath) -or
+        -not $processPath.StartsWith($repoRootPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+        throw "Refusing to stop non-repo process $($process.Id) on port 5100."
+    }
+
+    Write-Host "Restarting Main API process $($process.Id)."
+    Stop-ProcessTree -RootId $process.Id
+    $deadline = (Get-Date).AddSeconds(15)
+    do {
+        $stillListening = Get-NetTCPConnection -State Listen -LocalPort 5100 -ErrorAction SilentlyContinue
+        if (-not $stillListening) { break }
+        Start-Sleep -Milliseconds 250
+    } while ((Get-Date) -lt $deadline)
+    if ($stillListening) { throw 'Main API port 5100 did not release after stopping the process.' }
+
+    $runtime = Join-Path $repoRoot '.local\runtime'
+    New-Item -ItemType Directory -Path $runtime -Force | Out-Null
+    $startScript = Join-Path $PSScriptRoot 'Start-MainApi.ps1'
+    $log = Join-Path $runtime 'main-api-webhook-restart.log'
+    $errorLog = Join-Path $runtime 'main-api-webhook-restart.error.log'
+    $started = Start-Process -FilePath 'powershell.exe' `
+        -WorkingDirectory $repoRoot `
+        -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $startScript) `
+        -RedirectStandardOutput $log `
+        -RedirectStandardError $errorLog `
+        -PassThru
+    $started.Id | Set-Content -LiteralPath (Join-Path $runtime 'main-api.pid') -Encoding ascii
+    Wait-MainApi -TimeoutSeconds $RestartTimeoutSeconds
+}
+
 if (-not $ReplayOnly) {
     $first = Invoke-RestMethod -Method Post `
         -Uri "$BaseUrl/api/v1/local-webhooks/trigger" `
@@ -39,6 +112,8 @@ if (-not $ReplayOnly) {
         throw "Initial webhook trigger did not succeed: $($first | ConvertTo-Json -Compress)"
     }
 }
+
+if ($RestartMainApi) { Restart-MainApi }
 
 $replay = Invoke-RestMethod -Method Post `
     -Uri "$BaseUrl/api/v1/local-webhooks/trigger" `
@@ -61,4 +136,4 @@ if ($state -ne 'Succeeded|Succeeded|1|1|GET') {
     throw "Unexpected durable webhook state: $state"
 }
 
-Write-Host "Local webhook persistence passed: event=$EventId state=$state replay=$($replay.isReplay)"
+Write-Host "Local webhook persistence passed: event=$EventId state=$state replay=$($replay.isReplay) restarted=$($RestartMainApi.IsPresent)"

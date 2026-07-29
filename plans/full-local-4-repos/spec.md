@@ -119,7 +119,7 @@ Names are the contract; actual values must remain local-only.
 - [ ] Flutter points only to local API/SignalR endpoints in the local profile; no hardcoded public refresh URL remains.
 - [ ] Login, menu/product read, order create, mock payment success, kiosk execution, order completion and SignalR notification pass in simulator mode.
 - [ ] The same representative workflow passes with configured real hardware, with hardware-specific failures reported as device errors rather than cloud/network errors.
-- [ ] MinIO upload/download and local email capture are verifiable from local admin/test endpoints.
+- [x] MinIO upload/download and local email capture are verifiable from local admin/test endpoints.
 - [ ] No credential value is committed in new or modified configuration files, and previously exposed credentials are rotated.
 
 ---
