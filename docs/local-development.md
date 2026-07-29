@@ -138,7 +138,15 @@ powershell -ExecutionPolicy Bypass -File .\scripts\local\Test-SimulatorWorkflow.
 The test creates one local workflow fixture, sends a command through RabbitMQ,
 and polls CouchDB until the step and workflow are `Done`. The simulator keeps a
 durable SQLite journal under `.local/runtime`; completed command IDs replay the
-stored result instead of executing again.
+stored result instead of executing again. Its self-test also verifies that an
+interrupted `Executing` command becomes `Unknown` after restart and cannot run
+until an operator explicitly reconciles it. Use the reconciliation wrapper only
+after confirming the physical outcome:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\local\Reconcile-DeviceCommand.ps1 `
+  -CommandId <command-id> -Resolution Failed
+```
 
 Before starting real controllers, inventory ports and validate an explicit
 profile. The example profile intentionally fails real mode until all mappings

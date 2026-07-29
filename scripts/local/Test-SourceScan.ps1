@@ -21,6 +21,7 @@ try {
         $findings | ForEach-Object { ($_ -split ':', 3)[0..1] -join ':' } | Sort-Object -Unique
         throw 'Source scan failed. Values are intentionally not printed.'
     }
+    $global:LASTEXITCODE = 0
     Write-Host 'Working-tree source scan passed.'
 }
 finally { Pop-Location }

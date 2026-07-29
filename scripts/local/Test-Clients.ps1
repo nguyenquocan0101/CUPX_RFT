@@ -45,4 +45,5 @@ if (-not (Test-Path -LiteralPath (Join-Path $frontend '.next\BUILD_ID'))) {
 }
 if (-not (Test-Path -LiteralPath (Join-Path $mobile '.fvmrc'))) { throw 'Flutter FVM pin is missing.' }
 
+$global:LASTEXITCODE = 0
 Write-Host 'Client endpoint scan passed for executable frontend and Flutter source.'
