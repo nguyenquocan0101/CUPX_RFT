@@ -69,7 +69,7 @@ $msbuild = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere
 if ($LASTEXITCODE -ne 0) { throw "ArmController MSBuild failed" }
 ```
 
-Preflight verifies the .NET Framework 4.8.1 targeting pack, Visual Studio MSBuild, `packages.config` restore and required native robot driver. All five native controller projects plus ArmController/FRRobot and ArmController2 now build on this host. The simulator journal self-test also verifies restart conversion to `Unknown`, explicit operator reconciliation and idempotent replay. The current machine has only Bluetooth COM17/COM18, so the example profile intentionally fails real mode. Sugar is not started or verified in this MVP.
+Preflight verifies the .NET Framework 4.8.1 targeting pack, Visual Studio MSBuild, `packages.config` restore and required native robot driver. All five native controller projects plus ArmController/FRRobot and ArmController2 now build on this host. The simulator journal self-test also verifies restart conversion to `Unknown`, explicit operator reconciliation and idempotent replay. A source audit shows the legacy native `Program.cs` entry points still instantiate Azure `DeviceClient` directly; the RabbitMQ local-ingress adapter described by this phase is therefore still outstanding for real controller startup. The current machine has only Bluetooth COM17/COM18, so the example profile also intentionally fails real mode. Sugar is not started or verified in this MVP.
 
 Hardware acceptance uses a dry-run/status command first, then one operator-observed representative workflow. It also kills one controller after the journal reaches `Executing` and verifies restart reports `Unknown` without repeating movement. Record command IDs, device IDs, COM mappings and results without recording connection strings/secrets.
 
@@ -84,7 +84,7 @@ The journal records the operator decision in `DeviceCommandReconciliations`; it 
 
 ## Gate
 
-- Every controller needed by the representative workflow builds and starts without Azure credentials.
+- Every controller needed by the representative workflow builds and starts without Azure credentials. **Not yet met:** the current native entry points still use Azure direct-method ingress.
 - Only configured COM ports are opened.
 - Status/dry-run commands pass before any movement/dispense command.
 - One representative real-hardware workflow completes; failures surface as device errors, not cloud/network errors.

@@ -260,8 +260,8 @@ Confirmed by the user on 2026-07-29:
 - [x] Phase 04: Local integration providers (adjusted local scope; real payment deferred)
 - [x] Phase 05: Next.js and Flutter local configuration (Next build, URL scan, tracked sample cleanup and FVM Flutter analyze/test pass)
 - [x] Phase 06: Local command bus and simulator (RabbitMQ invoker wiring, durable simulator journal and representative workflow reaches Done/Observed under 30 seconds)
-- [ ] Phase 07: Real hardware controllers (all native controller projects build; real mode remains blocked by missing wired hardware mapping)
-- [ ] Phase 08: E2E, security and runbook (local smoke, persistence, p95, source scan, business flow, history and clean-clone gates verified; real hardware remains)
+- [ ] Phase 07: Real hardware controllers (native projects build and simulator journal is hardened; legacy controller programs still require a RabbitMQ local-ingress adapter and verified wired COM mappings)
+- [ ] Phase 08: E2E, security and runbook (all local/simulator gates pass; final real-controller gate remains blocked by the missing adapter and physical hardware)
 
 ## Session Notes
 <!-- Updated by cook automatically - do not edit manually -->
