@@ -4,8 +4,10 @@
     "cupDrop": "COM0",
     "coffee": "COM0",
     "iceMaker": "COM0",
-    "robotArm": "COM0"
+    "inhale": "COM0",
+    "mix": "COM0"
   },
+  "robotIp": "192.168.58.2",
   "baudRate": 115200,
   "notes": "Replace COM0 only after the physical controller is identified by Windows Device Manager. Do not map Bluetooth ports to machine controllers."
 }

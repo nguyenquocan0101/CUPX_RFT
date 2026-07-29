@@ -21,7 +21,7 @@ if ($profile.mode -ne 'real') {
     throw "Real mode requires a profile with mode=real. Current profile mode is '$($profile.mode)'."
 }
 
-$requiredDevices = @('cupDrop', 'coffee', 'iceMaker', 'robotArm')
+$requiredDevices = @('cupDrop', 'coffee', 'iceMaker', 'inhale', 'mix')
 $mapping = @{}
 foreach ($device in $requiredDevices) {
     $property = $profile.serialPorts.PSObject.Properties[$device]
@@ -58,6 +58,11 @@ foreach ($entry in $mapping.GetEnumerator()) {
     } elseif ($match[0].IsBluetooth) {
         $errors.Add("$device -> $port is a Bluetooth serial port; physical controllers require a verified wired port.")
     }
+}
+
+$robotIp = [string]$profile.robotIp
+if ($robotIp -notmatch '^(?:(?:25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1?[0-9]?[0-9])$') {
+    $errors.Add("robotIp is missing or invalid: '$robotIp'.")
 }
 
 if ($errors.Count -gt 0) {

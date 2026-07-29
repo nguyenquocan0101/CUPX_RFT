@@ -30,6 +30,10 @@ namespace ArmController2
 
         public const string QUEUE_STEP_UPDATE = "step-update";
         public const string QUEUE_STEP_UPDATE_ROUTING_KEY = "step.update";
+
+        public const string EXCHANGE_DEVICE_COMMAND = "device-command";
+        public const string ROUTING_DEVICE_COMMAND = "device.command";
+        public const string QUEUE_DEVICE_COMMAND_DLQ = "device-command.dlq";
     }
 
 }

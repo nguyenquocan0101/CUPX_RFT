@@ -167,9 +167,21 @@ powershell -ExecutionPolicy Bypass -File .\scripts\local\Start-HardwareControlle
   -Controller Coffee -DeviceId coffee-local -SerialPort COM7
 ```
 
-Supported controllers are `Coffee`, `CupDrop`, `IceMaker`, `Inhale`, and
+Supported .NET 8 controllers are `Coffee`, `CupDrop`, `IceMaker`, `Inhale`, and
 `Mix`. Do not use Bluetooth COM ports for machine controllers. ArmController2
-still requires its separate .NET Framework local-ingress bridge.
+uses its compatible .NET Framework launcher:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\local\Start-ArmController.ps1 `
+  -DeviceId arm-local -RobotIp 192.168.58.2
+```
+
+Reconcile an Arm command only after the physical outcome is known:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\local\Reconcile-ArmDeviceCommand.ps1 `
+  -CommandId <command-id> -Resolution Failed
+```
 
 Run the final local gates after the APIs are healthy:
 

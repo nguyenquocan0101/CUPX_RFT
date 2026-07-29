@@ -18,7 +18,7 @@
 - `AutomaticBrewingCoffeeKioskBE/SugarDispenserController/SugarDispenser/main/main.py`
 - `AutomaticBrewingCoffeeKioskBE/SugarDispenserController/SugarDispenser/requirements.txt`
 
-The five .NET 8 controller entry points now select the ingress by `HARDWARE_MODE`: `real` uses the shared local RabbitMQ command host and `azure` keeps the existing `DeviceClient` direct methods. Existing serial/device implementation remains unchanged. ArmController2 is still a .NET Framework 4.8.1 compatibility exception and has not yet been moved to the local ingress.
+The five .NET 8 controller entry points and the .NET Framework 4.8.1 ArmController2 now select the ingress by `HARDWARE_MODE`: `real` uses a local RabbitMQ command host and `azure` keeps the existing `DeviceClient` direct methods. Existing serial/device and Fairino robot implementations remain unchanged.
 
 ## Planned Shared Files
 
@@ -26,9 +26,12 @@ Create where target-framework compatibility permits:
 
 - `Shared/Shared.RabbitMqPublisher/LocalDeviceCommandHost.cs`
 - RabbitMQ consumer/result publisher, command deduplication and durable SQLite command journal
+- `ArmController/ArmController2/LocalArmCommandHost.cs` for the .NET Framework compatibility path
+- Arm JSON journal with atomic replacement and operator reconciliation
 - per-controller local settings examples with placeholders
 - `scripts/local/Get-SerialPortInventory.ps1`
 - `scripts/local/Start-HardwareController.ps1`
+- `scripts/local/Start-ArmController.ps1`
 - contract tests that replay the Phase 06 command fixtures
 
 If `ArmController2` cannot reference the shared project due to target framework constraints, add a narrowly scoped native Windows bridge process for Arm only. Do not retarget or rewrite the robot driver as part of MVP.
@@ -59,6 +62,7 @@ Get-CimInstance Win32_SerialPort | Select-Object DeviceID,Name,PNPDeviceID
 powershell -ExecutionPolicy Bypass -File .\scripts\local\Get-SerialPortInventory.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\local\Test-HardwareProfile.ps1 -HardwareMode real -ProfilePath .\config\hardware-profiles.local.example.json
 powershell -ExecutionPolicy Bypass -File .\scripts\local\Start-HardwareController.ps1 -Controller Coffee -DeviceId coffee-local -SerialPort COM7
+powershell -ExecutionPolicy Bypass -File .\scripts\local\Start-ArmController.ps1 -DeviceId arm-local -RobotIp 192.168.58.2
 dotnet build .\AutomaticBrewingCoffeeKioskBE\CoffeeMachineController\CoffeeMachineController\CoffeeMachineController.csproj
 dotnet build .\AutomaticBrewingCoffeeKioskBE\CupDropMachineController\CupDropMachineController\CupDropMachineController.csproj
 dotnet build .\AutomaticBrewingCoffeeKioskBE\IceMakerMachine\IceMakerMachine\IceMakerMachine.csproj
@@ -69,7 +73,7 @@ $msbuild = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere
 if ($LASTEXITCODE -ne 0) { throw "ArmController MSBuild failed" }
 ```
 
-Preflight verifies the .NET Framework 4.8.1 targeting pack, Visual Studio MSBuild, `packages.config` restore and required native robot driver. All five .NET 8 native controller projects plus ArmController/FRRobot and ArmController2 build on this host. The shared local ingress host creates one durable queue and SQLite journal per controller; startup converts interrupted `Executing` rows to `Unknown` and does not automatically retry physical actions. A Coffee controller smoke run with `HARDWARE_MODE=real`, fake `COM99`, and no Azure credential created `device-command.local-coffee-smoke` and `.local/runtime/controller-coffee.db`. The current machine has only Bluetooth COM17/COM18, so the example profile intentionally fails real mode. ArmController2 local ingress and Sugar are not started or verified in this MVP.
+Preflight verifies the .NET Framework 4.8.1 targeting pack, Visual Studio MSBuild, `packages.config` restore and required native robot driver. All five .NET 8 native controller projects plus ArmController/FRRobot and ArmController2 build on this host. The shared .NET 8 ingress host creates one durable queue and SQLite journal per controller; ArmController2 uses a compatible RabbitMQ 6 host and atomic JSON journal because it cannot reference the `net8.0` shared project. Both paths convert interrupted `Executing` rows to `Unknown` and do not automatically retry physical actions. Coffee local smoke created `device-command.local-coffee-smoke` and its SQLite journal without Azure credentials; Arm journal reconciliation smoke changed an `Unknown` record to operator-resolved `Failed` without starting the robot. The current machine has only Bluetooth COM17/COM18, so the example profile intentionally fails real mode. Sugar is excluded from the representative MVP workflow.
 
 Hardware acceptance uses a dry-run/status command first, then one operator-observed representative workflow. It also kills one controller after the journal reaches `Executing` and verifies restart reports `Unknown` without repeating movement. Record command IDs, device IDs, COM mappings and results without recording connection strings/secrets.
 
@@ -84,7 +88,7 @@ The journal records the operator decision in `DeviceCommandReconciliations`; it 
 
 ## Gate
 
-- The five .NET 8 controllers build and their local RabbitMQ ingress starts without Azure credentials. **Not yet met:** ArmController2 still needs the compatibility bridge and no verified wired COM mapping is present on this host.
+- The five .NET 8 controllers and ArmController2 build with local RabbitMQ ingress paths that do not require Azure credentials. **Not yet met:** no verified wired COM mapping or reachable Fairino robot is present on this host.
 - Only configured COM ports are opened.
 - Status/dry-run commands pass before any movement/dispense command.
 - One representative real-hardware workflow completes; failures surface as device errors, not cloud/network errors.

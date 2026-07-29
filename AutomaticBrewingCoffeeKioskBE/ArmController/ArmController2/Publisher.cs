@@ -13,7 +13,14 @@ namespace ArmController2
         private readonly IModel _channel;
         public Publisher()
         {
-            var factory = new ConnectionFactory() { HostName = "localhost" };
+            int port;
+            var factory = new ConnectionFactory
+            {
+                HostName = Environment.GetEnvironmentVariable("RABBITMQ_HOST") ?? "localhost",
+                Port = int.TryParse(Environment.GetEnvironmentVariable("RABBITMQ_PORT"), out port) ? port : 5672,
+                UserName = Environment.GetEnvironmentVariable("RABBITMQ_USERNAME") ?? "guest",
+                Password = Environment.GetEnvironmentVariable("RABBITMQ_PASSWORD") ?? "guest"
+            };
             _connection = factory.CreateConnection(); // giữ lại connection
             _channel = _connection.CreateModel();     // tạo channel
 

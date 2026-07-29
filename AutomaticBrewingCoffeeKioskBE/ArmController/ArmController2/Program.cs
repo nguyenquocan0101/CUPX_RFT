@@ -12,35 +12,54 @@ using MethodResponse = Microsoft.Azure.Devices.Client.MethodResponse;
 using fairino;
 using System.Text.Json;
 using CouchDB.Client;
+using Newtonsoft.Json.Linq;
 
 public class Program
 {
     static CancellationTokenSource _cts = new CancellationTokenSource();
     static DeviceClient deviceClient;
     static ArmRobot robot;
+    static LocalArmCommandHost localCommandHost;
 
     static string couchDbConn;
     static double timeOut = 30.0; // seconds
     
-    static ArmController2.Publisher publisher = new ArmController2.Publisher();
+    static ArmController2.Publisher publisher;
 
     public static void Main(string[] args)
     {
+        string reconcileCommand;
+        if (TryGetArgument(args, "--reconcile", out reconcileCommand))
+        {
+            var journalPath = GetArgument(args, "--journal") ?? Path.Combine(Environment.CurrentDirectory, ".local", "runtime", "controller-arm.json");
+            var resolution = GetArgument(args, "--resolution") ?? "Failed";
+            var journal = new ArmCommandJournal(journalPath);
+            journal.Initialize();
+            journal.Reconcile(reconcileCommand, resolution);
+            Console.WriteLine("Arm command reconciled: " + reconcileCommand + " resolution=" + resolution);
+            return;
+        }
+
         Console.WriteLine(nameof(UpdateStepStateMessages));
         //đăng kí sự kiện tắt kết nối cho serial
         AppDomain.CurrentDomain.ProcessExit += (sender, e) =>
         {
             Console.WriteLine("Process exiting, disconnecting...");
             _cts.Cancel();
+            if (localCommandHost != null) localCommandHost.Dispose();
             //_monitorCts.Cancel();
         };
         DotEnv.Load(options: new DotEnvOptions(probeForEnv: true));
+        bool localHardware = string.Equals(
+            Environment.GetEnvironmentVariable("HARDWARE_MODE"), "real", StringComparison.OrdinalIgnoreCase);
         string connectionString = Environment.GetEnvironmentVariable("DEVICE_PRIMARY_CONN_STR");
+        string deviceId = Environment.GetEnvironmentVariable("DEVICE_ID") ?? "arm-controller";
+        couchDbConn = Environment.GetEnvironmentVariable("COUCHDBURL") ?? "http://localhost:5984";
 
-        //couchDbConn = Environment.GetEnvironmentVariable("COUCHDBURL");
-
-        deviceClient = DeviceClient.CreateFromConnectionString(connectionString);
-        robot = new ArmRobot("192.168.58.2");
+        if (!localHardware)
+            deviceClient = DeviceClient.CreateFromConnectionString(connectionString);
+        publisher = new ArmController2.Publisher();
+        robot = new ArmRobot(Environment.GetEnvironmentVariable("ARM_ROBOT_IP") ?? "192.168.58.2");
 
         // Register handlers
         //deviceClient.SetMethodHandlerAsync("enableRealTimePosition", GetRealTimePositionMethod, robot).Wait();
@@ -49,9 +68,76 @@ public class Program
         //deviceClient.SetMethodHandlerAsync("move", MoveMethod, robot).Wait();
         //deviceClient.SetMethodHandlerAsync("move2", Move2Method, robot).Wait();
 
-        deviceClient.SetMethodHandlerAsync("runScript", RunScript, robot).Wait();
+        if (localHardware)
+        {
+            localCommandHost = new LocalArmCommandHost(
+                deviceId,
+                HandleLocalCommand,
+                Environment.GetEnvironmentVariable("LOCAL_COMMAND_JOURNAL")
+                    ?? Path.Combine(Environment.CurrentDirectory, ".local", "runtime", "controller-arm.json"));
+            localCommandHost.Start();
+        }
+        else
+        {
+            deviceClient.SetMethodHandlerAsync("runScript", RunScript, robot).Wait();
+        }
 
         Task.Delay(-1).Wait(); // Keep the application running
+    }
+
+    private static ArmDeviceCommandResult HandleLocalCommand(ArmDeviceCommandRequest request)
+    {
+        if (!string.Equals(request.Method, "runScript", StringComparison.Ordinal))
+            throw new InvalidOperationException("Unsupported Arm method: " + request.Method);
+
+        var methodRequest = new MethodRequest(
+            request.Method,
+            Encoding.UTF8.GetBytes(ToJson(request.Parameters)));
+        var response = RunScript(methodRequest, robot).GetAwaiter().GetResult();
+        return new ArmDeviceCommandResult
+        {
+            CommandId = request.CommandId,
+            SchemaVersion = request.SchemaVersion,
+            CorrelationId = request.CorrelationId,
+            DeviceId = request.DeviceId,
+            Status = response.Status == 200 ? "Completed" : "Failed",
+            Payload = new System.Collections.Generic.Dictionary<string, string> { ["result"] = response.ResultAsJson },
+            ErrorCode = response.Status == 200 ? null : "DEVICE_METHOD_FAILURE",
+            ErrorMessage = response.Status == 200 ? null : response.ResultAsJson,
+            CompletedAtUtc = DateTime.UtcNow
+        };
+    }
+
+    private static string ToJson(System.Collections.Generic.Dictionary<string, string> parameters)
+    {
+        if (parameters != null && parameters.ContainsKey("raw") && !string.IsNullOrWhiteSpace(parameters["raw"]))
+            return parameters["raw"];
+
+        var values = new System.Collections.Generic.Dictionary<string, object>();
+        if (parameters != null)
+        {
+            foreach (var pair in parameters)
+            {
+                try { values[pair.Key] = JToken.Parse(pair.Value); }
+                catch (Newtonsoft.Json.JsonException) { values[pair.Key] = pair.Value; }
+            }
+        }
+        return JsonConvert.SerializeObject(values);
+    }
+
+    private static bool TryGetArgument(string[] args, string name, out string value)
+    {
+        value = GetArgument(args, name);
+        return !string.IsNullOrWhiteSpace(value);
+    }
+
+    private static string GetArgument(string[] args, string name)
+    {
+        var prefix = name + "=";
+        foreach (var argument in args ?? new string[0])
+            if (argument.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                return argument.Substring(prefix.Length);
+        return null;
     }
 
     /// <summary>
