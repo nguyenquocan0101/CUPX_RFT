@@ -69,7 +69,7 @@ $msbuild = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere
 if ($LASTEXITCODE -ne 0) { throw "ArmController MSBuild failed" }
 ```
 
-Preflight verifies the .NET Framework 4.8.1 targeting pack, Visual Studio MSBuild, `packages.config` restore and required native robot driver. The current machine has only Bluetooth COM17/COM18, so the example profile intentionally fails real mode. Sugar is not started or verified in this MVP.
+Preflight verifies the .NET Framework 4.8.1 targeting pack, Visual Studio MSBuild, `packages.config` restore and required native robot driver. All five native controller projects plus ArmController/FRRobot and ArmController2 now build on this host. The current machine has only Bluetooth COM17/COM18, so the example profile intentionally fails real mode. Sugar is not started or verified in this MVP.
 
 Hardware acceptance uses a dry-run/status command first, then one operator-observed representative workflow. It also kills one controller after the journal reaches `Executing` and verifies restart reports `Unknown` without repeating movement. Record command IDs, device IDs, COM mappings and results without recording connection strings/secrets.
 

@@ -14,7 +14,7 @@ try {
     )
     $findings = @()
     foreach ($pattern in $patterns) {
-        $findings += @(git grep -n -I -E $pattern -- 'AutomaticBrewingCoffeeBE/**' 'AutomaticBrewingCoffeeKioskBE/**' 'AutomaticBrewingCoffeeFE/app/**' 'AutomaticBrewingCoffeeFE/components/**' 'AutomaticBrewingCoffeeFE/services/**' 'AutomaticBrewingCoffeeFE/lib/**' 'AutomaticBrewingCoffeeApp/lib/**' 'scripts/**' 'config/**' 2>$null)
+        $findings += @(git grep -n -I -E $pattern -- 'AutomaticBrewingCoffeeBE/**' 'AutomaticBrewingCoffeeKioskBE/**' 'AutomaticBrewingCoffeeFE/app/**' 'AutomaticBrewingCoffeeFE/components/**' 'AutomaticBrewingCoffeeFE/services/**' 'AutomaticBrewingCoffeeFE/lib/**' 'AutomaticBrewingCoffeeApp/lib/**' 'scripts/**' 'config/**' ':(exclude)scripts/local/Test-SourceScan.ps1' 2>$null)
     }
     if ($findings.Count -gt 0) {
         Write-Host 'Potential tracked private material or production endpoint finding(s):'

@@ -148,3 +148,13 @@ are replaced with verified wired controller ports:
 powershell -ExecutionPolicy Bypass -File .\scripts\local\Get-SerialPortInventory.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\local\Test-HardwareProfile.ps1 -HardwareMode real
 ```
+
+Run the final local gates after the APIs are healthy:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\local\Test-LocalPerformance.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\local\Test-SourceScan.ps1
+```
+
+The performance check warms the Main API and measures 100 sequential `/health`
+requests. It fails when p95 reaches 500 ms.

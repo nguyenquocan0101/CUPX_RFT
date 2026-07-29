@@ -35,7 +35,7 @@
     "user_visible_behavior": "so that workflows can be tested without USB devices and operated with validated Windows COM mappings",
     "verification_command": "powershell -ExecutionPolicy Bypass -File .\\scripts\\local\\Smoke-Test.ps1 -HardwareMode simulator",
     "status": "active",
-    "evidence": "Simulator project builds; SQLite journal self-test verifies durable Completed replay; RabbitMQ command was published and consumed from device-command; Test-SimulatorWorkflow reaches Done/Observed under 30 seconds through the Kiosk observer. Serial inventory reports only Bluetooth COM17/COM18; Test-HardwareProfile blocks real mode until verified wired mappings exist.",
+    "evidence": "Simulator project builds; SQLite journal self-test verifies durable Completed replay; RabbitMQ command was published and consumed from device-command; Test-SimulatorWorkflow reaches Done/Observed under 30 seconds through the Kiosk observer. Five native controllers plus ArmController/FRRobot and ArmController2 build with restored packages. Serial inventory reports only Bluetooth COM17/COM18; Test-HardwareProfile blocks real mode until verified wired mappings exist.",
     "notes": "",
     "priority": "P1"
   },
