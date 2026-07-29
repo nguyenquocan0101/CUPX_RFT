@@ -26,8 +26,7 @@ export const SignalRProvider = ({ children }: { children: React.ReactNode }) => 
     const connectionRef = useRef<signalR.HubConnection | null>(null);
     const [connectionReady, setConnectionReady] = useState(false);
 
-    const url = process.env.NEXT_PUBLIC_SIGNALR_URL;
-    if (!url) throw new Error("Missing SignalR URL");
+    const url = process.env.NEXT_PUBLIC_SIGNALR_URL || "/hubs/notification";
 
     // ✅ Create connection once (on client only)
     useEffect(() => {

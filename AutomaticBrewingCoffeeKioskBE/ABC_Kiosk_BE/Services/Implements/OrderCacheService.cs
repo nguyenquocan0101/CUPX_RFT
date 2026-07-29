@@ -11,13 +11,13 @@ namespace Services.Implements
     public class OrderCacheService : IOrderCacheService
     {
         private readonly IDatabase _db;
-        private readonly CloudClient _cloudClient;
+        private readonly IMainBackendClient _mainBackendClient;
         private readonly ILogger<OrderCacheService> _logger;
 
-        public OrderCacheService(IDatabase db, CloudClient cloudClient, ILogger<OrderCacheService> logger)
+        public OrderCacheService(IDatabase db, IMainBackendClient mainBackendClient, ILogger<OrderCacheService> logger)
         {
             _db = db;
-            _cloudClient = cloudClient;
+            _mainBackendClient = mainBackendClient;
             _logger = logger;
         }
 
@@ -108,7 +108,7 @@ namespace Services.Implements
         {
             try
             {
-                var completeResult = await _cloudClient.CompleteOrderAsync(orderId, finishedProductIdList);
+                var completeResult = await _mainBackendClient.CompleteOrderAsync(orderId, finishedProductIdList);
                 if (completeResult)
                 {
                     await _db.KeyDeleteAsync(orderId);
@@ -188,7 +188,7 @@ namespace Services.Implements
         {
             try
             {
-                var completeResult = await _cloudClient.FailOrderAsync(orderId, message, finishedProductIds, failedProductIds, preparingProductIds);
+                var completeResult = await _mainBackendClient.FailOrderAsync(orderId, message, finishedProductIds, failedProductIds, preparingProductIds);
                 if (completeResult)
                 {
                     _logger.LogInformation("Update order {OrderId} to failed successful", orderId);

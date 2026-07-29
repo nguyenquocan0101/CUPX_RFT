@@ -1,7 +1,7 @@
 ﻿using Domain.Models;
-using Microsoft.Azure.Devices;
-using Microsoft.Extensions.Configuration;
 using Repositories.Interfaces;
+using Services.Interfaces;
+using Shared.MessageStore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,16 +12,16 @@ namespace Services.WorkflowEngine
     public class WorkflowExecutor
     {
         private readonly StepCommandFactory _commandFactory;
-        private readonly ServiceClient _serviceClient;
+        private readonly IDeviceMethodInvoker _deviceMethodInvoker;
         private readonly List<DeviceForWorkFlow> _devices;
         private readonly Dictionary<string, List<DeviceForWorkFlow>> _deviceGroup;
 
-        public WorkflowExecutor(IConfiguration configuration, IUnitOfWork unitOfWork)
+        public WorkflowExecutor(IDeviceMethodInvoker deviceMethodInvoker, IUnitOfWork unitOfWork)
         {
-            _serviceClient = ServiceClient.CreateFromConnectionString(configuration["AzureServiceConn"]!);
+            _deviceMethodInvoker = deviceMethodInvoker;
 
             _devices = (unitOfWork.GetRepository<Domain.Models.Device>().GetListAsync<DeviceForWorkFlow>(
-                predicate: d => d.Status.Equals(DeviceStatus.Enabled),
+                predicate: d => d.Status.Equals(Domain.Enums.DeviceStatus.Working),
                 selector: d => new DeviceForWorkFlow(d)))
                 .Result.ToList();
 
@@ -63,25 +63,22 @@ namespace Services.WorkflowEngine
 
                         try
                         {
-                            var directMethodInvoke = new CloudToDeviceMethod(
-                                step.Function,
-                                responseTimeout: TimeSpan.FromSeconds(30),
-                                connectionTimeout: TimeSpan.FromSeconds(5)
-                            );
-
-                            if (!string.IsNullOrEmpty(step.Parameters))
-                            {
-                                directMethodInvoke.SetPayloadJson(step.Parameters);
-                            }
-
-                            var response = await _serviceClient.InvokeDeviceMethodAsync(
+                            var commandId = $"{workflow.WorkflowId}:{step.StepId}:{targetDevice.Device.DeviceId}";
+                            var response = await _deviceMethodInvoker.InvokeAsync(new DeviceCommandRequest(
+                                commandId,
+                                1,
+                                commandId,
+                                workflow.WorkflowId,
+                                step.StepId,
                                 targetDevice.Device.DeviceId,
-                                directMethodInvoke
-                            );
+                                step.Function,
+                                new Dictionary<string, string> { ["raw"] = step.Parameters ?? string.Empty },
+                                DateTimeOffset.UtcNow,
+                                30000));
 
                             Console.WriteLine($"[Device] Invoked {step.Function} on device {targetDevice.Device.DeviceId}, response: {response.Status}");
 
-                            if (response.Status != 200)
+                            if (response.Status != "Completed")
                             {
                                 Console.WriteLine($"[Error] Device {targetDevice.Device.DeviceId} responded with status {response.Status}");
                                 return false;

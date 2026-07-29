@@ -21,8 +21,12 @@ final sl = GetIt.instance;
 final navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
-  await dotenv.load(fileName: '.env');
   WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await dotenv.load(fileName: '.env');
+  } catch (_) {
+    // Local builds can use the compile-time defaults in ApiConstants.
+  }
   HttpOverrides.global = MyHttpOverrides();
   await setupServiceLocator();
 

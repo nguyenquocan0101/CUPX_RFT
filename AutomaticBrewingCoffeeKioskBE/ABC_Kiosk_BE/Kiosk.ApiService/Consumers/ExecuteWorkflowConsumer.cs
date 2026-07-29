@@ -4,7 +4,6 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
-using RabbitMQ.Client.Exceptions;
 using Repositories.CouchDbRepository;
 using Services.Interfaces;
 using Shared.MessageStore;
@@ -15,32 +14,36 @@ namespace Kiosk.ApiService.Consumers
     public class ExecuteWorkflowConsumer : BackgroundService
     {
         private readonly ILogger<ExecuteWorkflowConsumer> _logger;
-        private IModel _channel;
+        private readonly IModel _channel;
+        private readonly IWorkflowDeliveryTracker _deliveryTracker;
         private IServiceProvider _provider;
-        public ExecuteWorkflowConsumer(IServiceProvider provider, [FromKeyedServices(QueueConstants.QUEUE_WORKFLOW_EXECUTE)] IModel channel, ILogger<ExecuteWorkflowConsumer> logger)
+        public ExecuteWorkflowConsumer(IServiceProvider provider, [FromKeyedServices(QueueConstants.QUEUE_WORKFLOW_EXECUTE)] IModel channel, ILogger<ExecuteWorkflowConsumer> logger, IWorkflowDeliveryTracker deliveryTracker)
         {
             _logger = logger;
             _channel = channel;
             _provider = provider;
+            _deliveryTracker = deliveryTracker;
         }
         protected async override Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            StartConsuming(QueueConstants.QUEUE_WORKFLOW_EXECUTE, stoppingToken);
-            await Task.CompletedTask;
+            try
+            {
+                StartConsuming(QueueConstants.QUEUE_WORKFLOW_EXECUTE, stoppingToken);
+                _logger.LogInformation("Workflow execute consumer started on {QueueName}.", QueueConstants.QUEUE_WORKFLOW_EXECUTE);
+                await Task.Delay(Timeout.InfiniteTimeSpan, stoppingToken);
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+            }
+            catch (Exception error)
+            {
+                _logger.LogError(error, "Workflow execute consumer stopped during startup.");
+                throw;
+            }
         }
 
         private void StartConsuming(string queueName, CancellationToken stoppingToken)
         {
-            //just consume the queue if it exists
-            try
-            {
-                _channel.QueueDeclarePassive(queue: queueName);
-            }
-            catch (OperationInterruptedException)
-            {
-                return;
-            }
-
             var consumer = new EventingBasicConsumer(_channel);
             consumer.Received += async (model, ea) =>
             {
@@ -50,17 +53,27 @@ namespace Kiosk.ApiService.Consumers
 
                 try
                 {
+                    _deliveryTracker.Register(ea.DeliveryTag);
                     var success = await HandleBaseOnMesssage(message, ea.BasicProperties.Type, ea.DeliveryTag);
+                    if (!success)
+                    {
+                        _deliveryTracker.TryTake(ea.DeliveryTag);
+                        _channel.BasicNack(ea.DeliveryTag, multiple: false, requeue: false);
+                        _logger.LogWarning("Dropped invalid workflow message from queue {QueueName}.", queueName);
+                    }
                 }
 
                 catch (Exception ex)
                 {
-                    _logger.LogError($"Exception occurred while processing message from queue {queueName}: {ex}");
+                    _deliveryTracker.TryTake(ea.DeliveryTag);
+                    _channel.BasicNack(ea.DeliveryTag, multiple: false, requeue: false);
+                    _logger.LogError(ex, "Exception occurred while processing message from queue {QueueName}.", queueName);
                 }
 
             };
 
             _channel.BasicConsume(queue: queueName, autoAck: false, consumer: consumer); //khởi động quá trình lắng nghe
+            _logger.LogInformation("Workflow execute consumer subscribed to {QueueName}.", queueName);
 
         }
 
@@ -93,6 +106,7 @@ namespace Kiosk.ApiService.Consumers
                                 _logger.LogWarning("Order {OrderId} is faulted. Skipping workflow execution.", workflowWithOrderId.OrderId);
                                 //acknowledge the message to remove it from the queue
                                 _channel.BasicAck(deliveryTag, false);
+                                _deliveryTracker.TryTake(deliveryTag);
                                 return true;
                             }
                             await _workflowRepo.AddFromWorkflowAsync(workflowWithOrderId.W, deliveryTag, workflowWithOrderId.Side, workflowWithOrderId.OrderId);

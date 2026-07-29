@@ -13,12 +13,7 @@ var builder = WebApplication.CreateBuilder(new WebApplicationOptions
     EnvironmentName = Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ?? "Production"
 });
 
-var configuration = builder.Configuration
-    .SetBasePath(Directory.GetCurrentDirectory())
-    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-    .AddJsonFile($"appsettings.{builder.Environment.EnvironmentName}.json", optional: true, reloadOnChange: true)
-    .AddEnvironmentVariables()
-    .Build();
+var configuration = builder.Configuration;
 
 
 //Add support to logging with SERILOG
@@ -44,8 +39,10 @@ builder.Services.AddControllers().AddJsonOptions(options =>
 builder.Services.AddRedisCache(configuration);
 builder.Services.AddScoped<IRuntimeStateService, RedisRuntimeStateService>();
 builder.Services.AddScoped<IStartupInitializer, StartupInitializer>();
+builder.Services.AddSingleton<IStartupResourceProvisioner, StartupResourceProvisioner>();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddTransient<ApiKeyAuthenticationMiddleware>();
+builder.Services.AddHealthChecks();
 builder.Services.AddSwaggerGen();
 builder.Services.AddConfigSwagger();
 builder.Services.AddEndpointsApiExplorer();
@@ -56,7 +53,10 @@ builder.Services.AddAppServices(configuration);
 //builder.Services.AddIotHub(configuration);
 //builder.Services.AddWorkflowEngineConfig(configuration);
 //builder.Services.AddWebSocketServices();
-builder.Services.AddWorkflowWorker();
+if (KioskRuntimeSettings.AreWorkflowWorkersEnabled(configuration))
+{
+    builder.Services.AddWorkflowWorker();
+}
 builder.Services.AddRabbitMQ(configuration).AddRabbitMQConsumers();
 
 //Add Controller Filter
@@ -85,7 +85,10 @@ app.UseSwagger();
 
 app.UseCors();
 
-app.UseHttpsRedirection();
+if (!KioskRuntimeSettings.IsLocalMode(configuration))
+{
+    app.UseHttpsRedirection();
+}
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 app.UseMiddleware<ApiKeyAuthenticationMiddleware>();
 
@@ -93,6 +96,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+app.MapHealthChecks("/health");
 
 using (var scope = app.Services.CreateScope())
 {

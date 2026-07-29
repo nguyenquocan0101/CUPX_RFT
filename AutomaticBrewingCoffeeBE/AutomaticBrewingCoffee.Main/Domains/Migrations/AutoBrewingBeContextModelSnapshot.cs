@@ -998,6 +998,129 @@ namespace AutomaticBrewingCoffee.Domain.Migrations
                     b.ToTable("KioskVersionProductMappings");
                 });
 
+            modelBuilder.Entity("AutomaticBrewingCoffee.Domain.Models.LocalWebhookInbox", b =>
+                {
+                    b.Property<string>("InboxId")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<int>("AttemptCount")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("CompletedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("EventId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<string>("EventType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("IdempotencyKey")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<DateTime?>("LastAttemptAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<DateTime?>("LeaseUntil")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("PayloadHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<DateTime>("ReceivedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<int?>("StatusCode")
+                        .HasColumnType("int");
+
+                    b.HasKey("InboxId");
+
+                    b.HasIndex("Source", "EventType", "EventId")
+                        .IsUnique();
+
+                    b.ToTable("LocalWebhookInboxes");
+                });
+
+            modelBuilder.Entity("AutomaticBrewingCoffee.Domain.Models.LocalWebhookOutbox", b =>
+                {
+                    b.Property<string>("OutboxId")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<int>("AttemptCount")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("HttpMethod")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("nvarchar(16)");
+
+                    b.Property<string>("InboxId")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<int?>("LastStatusCode")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("LeaseUntil")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("PayloadJson")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("SentAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("nvarchar(32)");
+
+                    b.Property<string>("TargetPath")
+                        .IsRequired()
+                        .HasMaxLength(450)
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("OutboxId");
+
+                    b.HasIndex("InboxId")
+                        .IsUnique();
+
+                    b.ToTable("LocalWebhookOutboxes");
+                });
+
             modelBuilder.Entity("AutomaticBrewingCoffee.Domain.Models.LocationType", b =>
                 {
                     b.Property<string>("LocationTypeId")
@@ -2190,6 +2313,17 @@ namespace AutomaticBrewingCoffee.Domain.Migrations
                     b.Navigation("Product");
                 });
 
+            modelBuilder.Entity("AutomaticBrewingCoffee.Domain.Models.LocalWebhookOutbox", b =>
+                {
+                    b.HasOne("AutomaticBrewingCoffee.Domain.Models.LocalWebhookInbox", "Inbox")
+                        .WithOne("Outbox")
+                        .HasForeignKey("AutomaticBrewingCoffee.Domain.Models.LocalWebhookOutbox", "InboxId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Inbox");
+                });
+
             modelBuilder.Entity("AutomaticBrewingCoffee.Domain.Models.Menu", b =>
                 {
                     b.HasOne("AutomaticBrewingCoffee.Domain.Models.Organization", "Organization")
@@ -2400,6 +2534,11 @@ namespace AutomaticBrewingCoffee.Domain.Migrations
                     b.Navigation("KioskVersionProductMappings");
 
                     b.Navigation("Kiosks");
+                });
+
+            modelBuilder.Entity("AutomaticBrewingCoffee.Domain.Models.LocalWebhookInbox", b =>
+                {
+                    b.Navigation("Outbox");
                 });
 
             modelBuilder.Entity("AutomaticBrewingCoffee.Domain.Models.Menu", b =>

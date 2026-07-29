@@ -1,61 +1,94 @@
-﻿using MimeKit;
+using MimeKit;
 using Services.Email.Base;
-using SmtpClient = MailKit.Net.Smtp.SmtpClient;
 
 namespace Services.Email;
+
+public interface IEmailTransport
+{
+    Task SendAsync(
+        MimeMessage message,
+        SmtpConnectionOptions options,
+        CancellationToken cancellationToken = default);
+}
+
+public sealed class SmtpConnectionOptions
+{
+    public string Host { get; init; } = "127.0.0.1";
+    public int Port { get; init; }
+    public bool UseSsl { get; init; }
+    public bool RequiresAuthentication { get; init; }
+    public string Username { get; init; } = string.Empty;
+    public string Password { get; init; } = string.Empty;
+}
+
+public sealed class MailKitEmailTransport : IEmailTransport
+{
+    public async Task SendAsync(
+        MimeMessage message,
+        SmtpConnectionOptions options,
+        CancellationToken cancellationToken = default)
+    {
+        using var client = new MailKit.Net.Smtp.SmtpClient();
+        try
+        {
+            await client.ConnectAsync(options.Host, options.Port, options.UseSsl, cancellationToken);
+            if (options.RequiresAuthentication)
+            {
+                client.AuthenticationMechanisms.Remove("XOAUTH2");
+                await client.AuthenticateAsync(options.Username, options.Password, cancellationToken);
+            }
+            await client.SendAsync(message, cancellationToken);
+            await client.DisconnectAsync(true, cancellationToken);
+        }
+        catch
+        {
+            if (client.IsConnected)
+                await client.DisconnectAsync(true, cancellationToken);
+            throw;
+        }
+    }
+}
 
 public class EmailSender
 {
     private readonly SmtpSettings _smtpSettings;
+    private readonly IEmailTransport _transport;
 
     public EmailSender(SmtpSettings smtpSettings)
+        : this(smtpSettings, new MailKitEmailTransport())
     {
-        _smtpSettings = smtpSettings;
     }
 
-    public async Task SendEmailAsync(EmailMessage emailMessage)
+    public EmailSender(SmtpSettings smtpSettings, IEmailTransport transport)
     {
-        await SendAsync(CreateEmail(emailMessage));
+        _smtpSettings = smtpSettings ?? throw new ArgumentNullException(nameof(smtpSettings));
+        _transport = transport ?? throw new ArgumentNullException(nameof(transport));
     }
 
-    private async Task SendAsync(MimeMessage message)
-    {
-        using var client = new SmtpClient();
-
-        try
+    public Task SendEmailAsync(EmailMessage emailMessage) =>
+        _transport.SendAsync(CreateEmail(emailMessage), new SmtpConnectionOptions
         {
-            await client.ConnectAsync(_smtpSettings.Server, _smtpSettings.Port, true);
-            client.AuthenticationMechanisms.Remove("XOAUTH2");
-            await client.AuthenticateAsync(_smtpSettings.Username, _smtpSettings.Password);
-
-            await client.SendAsync(message);
-        }
-        catch
-        {
-            await client.DisconnectAsync(true);
-            client.Dispose();
-
-            throw;
-        }
-    }
+            Host = _smtpSettings.Server,
+            Port = _smtpSettings.Port,
+            UseSsl = _smtpSettings.UseSsl,
+            RequiresAuthentication = _smtpSettings.RequiresAuthentication,
+            Username = _smtpSettings.Username,
+            Password = _smtpSettings.Password
+        });
 
     private MimeMessage CreateEmail(EmailMessage emailMessage)
     {
         var builder = new BodyBuilder { HtmlBody = emailMessage.Body };
-
-        if (emailMessage.Attachments.Count > 0)
-            foreach (var attachment in emailMessage.Attachments)
-                builder.Attachments.Add(attachment.Name, attachment.Value);
+        foreach (var attachment in emailMessage.Attachments)
+            builder.Attachments.Add(attachment.Name, attachment.Value);
 
         var email = new MimeMessage
         {
             Subject = emailMessage.Subject,
             Body = builder.ToMessageBody()
         };
-
         email.From.Add(new MailboxAddress(_smtpSettings.SenderName, _smtpSettings.SenderEmail));
-        email.To.Add(new MailboxAddress(emailMessage.ToAddress.Split("@")[0], emailMessage.ToAddress));
-
+        email.To.Add(new MailboxAddress(emailMessage.ToAddress.Split('@')[0], emailMessage.ToAddress));
         return email;
     }
 }

@@ -35,6 +35,20 @@ namespace Repositories.CouchDbRepository
 
         public async Task AddFromWorkflowAsync(Workflow workflow, ulong deliveryTag, int side, string? orderId = null)
         {
+            var existingWorkflow = (await _context.WorkflowDatas
+                .AsQueryable()
+                .Where(item => item.WorkflowId == workflow.WorkflowId && item.OrderId == orderId)
+                .ToListAsync())
+                .OrderByDescending(item => item.Id)
+                .FirstOrDefault();
+
+            if (existingWorkflow != null)
+            {
+                existingWorkflow.DeliveryTag = deliveryTag;
+                await _context.WorkflowDatas.AddOrUpdateAsync(existingWorkflow);
+                return;
+            }
+
             var workflowData = new WorkflowData();
             workflowData.WorkflowId = workflow.WorkflowId;
             workflowData.DeliveryTag = deliveryTag;

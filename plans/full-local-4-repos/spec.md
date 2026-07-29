@@ -16,7 +16,7 @@ Gemini là ngoại lệ được cho phép ở server-side nếu một use case 
 ## User Stories
 
 - **[P1]** As a developer, I want one Docker Compose stack for local infrastructure so that all required data stores and brokers start with predictable service names and persistent volumes.
-  Accepted when: SQL Server, PostgreSQL, Redis, RabbitMQ, CouchDB, MinIO and local mock services have health checks and reach `healthy`/equivalent status within 120 seconds on a configured Windows machine.
+  Accepted when: Redis, RabbitMQ, CouchDB, MinIO and Mailpit have health checks and reach `healthy`/equivalent status within 120 seconds on a configured Windows machine; the existing host SQL Server passes a separate preflight check. PostgreSQL is not part of the MVP runtime because kiosk EF/Npgsql is disabled.
 
 - **[P1]** As a developer, I want the main backend and kiosk backend to use local endpoints so that core API flows work with no cloud credential.
   Accepted when: API startup succeeds with cloud credentials absent, the kiosk `CloudClient` calls the local main backend, and a smoke test completes login, product/menu read, order create and order status update.
@@ -41,9 +41,9 @@ Gemini là ngoại lệ được cho phép ở server-side nếu một use case 
 
 1. **FR-01:** Add a documented `local` runtime profile and a root/local Compose entry point for infrastructure. Services must use named volumes and service-name DNS, not hardcoded public hosts.
 2. **FR-02:** Backend chính must run against local SQL Server and Redis, and CAP must run against local RabbitMQ. Startup must not require Cloudflare Tunnel, Sentry DSN, Azure IoT credentials, VNPay credentials, MPOS credentials, SMTP credentials or Supabase credentials in local mode.
-3. **FR-03:** Replace direct Firebase authentication at the local composition boundary with a mock/local implementation of `IFirebaseAuthService` or a higher-level auth provider. It must issue JWT claims compatible with the current FE middleware and backend authorization.
+3. **FR-03:** Use the existing SQL email/password login and JWT flow in local mode. Firebase registration must be disabled; if an inactive consumer still requires `IFirebaseAuthService`, inject a disabled implementation that performs no network call. JWT claims must remain compatible with current FE middleware and backend authorization.
 4. **FR-04:** Replace direct Supabase Storage calls with an abstraction that supports MinIO S3-compatible storage. Configure bucket name, endpoint, access key, secret key, public base URL and path-style addressing explicitly.
-5. **FR-05:** Provide local email capture. The implementation must persist or expose recipient, subject, HTML body and attachments for inspection without connecting to SMTP.
+5. **FR-05:** Provide local email capture through Mailpit SMTP. The implementation must persist or expose recipient, subject, HTML body and attachments for inspection without connecting to an external SMTP provider.
 6. **FR-06:** Provide local payment adapters for VNPay and MPOS flows. The mock must expose deterministic state transitions and invoke the same callback/SignalR/CAP paths used by business logic.
 7. **FR-07:** Provide local webhook endpoints and a replay/trigger mechanism. Callback processing must be idempotent by provider transaction/reference id.
 8. **FR-08:** Refactor kiosk `CloudClient` to a named local main-backend client with configurable base URL and API key. Remove cloud-specific naming at the integration boundary while retaining compatible order complete/fail payloads.
@@ -86,14 +86,14 @@ Names are the contract; actual values must remain local-only.
 - `CouchDB__Url`, `CouchDB__Username`, `CouchDB__Pwd`
 - `Redis__ConnectionString`
 - `RabbitMQ__Host`, `RabbitMQ__Port`, `RabbitMQ__Username`, `RabbitMQ__Password`
-- `MAIN_BACKEND__BaseUrl`, `MAIN_BACKEND__ApiKey`
+- `MAIN_BACKEND__BaseUrl`, `MAIN_BACKEND__OutboundApiKey`, inbound Kiosk `ApiKey`
 - `KioskId`, `HARDWARE_MODE`, `SerialPorts__*`, `DDLSourceFolder`
 - `AZURE_SERVICE_ENABLED`, `AzureServiceConn` only for non-local integration
 
 **Next.js and Flutter**
 
-- Next.js: `API_PROXY_TARGET`, `NEXT_PUBLIC_API_BASE_URL`, `NEXT_PUBLIC_SIGNALR_URL`, optional `NEXT_PUBLIC_SENTRY_DSN`
-- Flutter: `BASE_URL`, `API_KEY_HEADER`, `API_KEY`, `SIGNALR_HUB_URL`, `KIOSK_ID`, `CLIENT_ID`, `SIDE`
+- Next.js: `API_PROXY_TARGET`, `NEXT_PUBLIC_API_BASE_URL`, `NEXT_PUBLIC_NOTIFICATION_HUB_URL`, optional `NEXT_PUBLIC_SENTRY_DSN`
+- Flutter: `BASE_URL`, `API_KEY_HEADER`, `API_KEY`, `ORDER_SIGNALR_HUB_URL`, `KIOSK_ID`, `CLIENT_ID`, `SIDE`
 
 **Optional AI**
 
@@ -140,6 +140,24 @@ Names are the contract; actual values must remain local-only.
 - Real kiosk hardware can be accessed by the host or by a supported controller runtime; simulator mode is mandatory for CI/local smoke tests without hardware.
 - Existing backend SQL schema/script and kiosk CouchDB document contracts remain the starting data model.
 - Gemini network access is allowed only as an explicit optional exception; all non-AI runtime dependencies remain local.
+
+---
+
+## Verified Host Baseline
+
+- Docker Desktop/Compose are installed; the Linux engine must be started before Compose commands.
+- SQL Server is reachable on `127.0.0.1:1433` and remains the main backend database because the code uses EF Core SQL Server.
+- PostgreSQL 17 is reachable on `127.0.0.1:5432`; PostgreSQL 18 is reachable on `127.0.0.1:5433`.
+- Redis, RabbitMQ, CouchDB and MinIO are not currently listening on their standard local ports.
+- `psql.exe` is installed under PostgreSQL 17/18 but is not in the current `PATH`.
+
+## Selected Local Stack
+
+- **Host services:** existing SQL Server for the main backend. Installed PostgreSQL instances are detected but unused in the MVP.
+- **Docker services:** Redis, RabbitMQ, CouchDB, MinIO and Mailpit.
+- **Application processes:** main .NET API, kiosk .NET API, Next.js and Flutter run with their native dev commands.
+- **Mock integrations:** local JWT auth provider, local email capture, mock VNPay/MPOS provider and local webhook replay endpoint.
+- **AI:** disabled by default. `GEMINI_API_KEY` is required only after a concrete server-side AI feature is added.
 
 ---
 

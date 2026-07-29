@@ -13,6 +13,7 @@ export interface ApiResponse<T = any> {
 export interface ApiRequest {
     url: string;
     payload?: any;
+    params?: object;
     headers?: object;
     responseType?: ResponseType;
 }

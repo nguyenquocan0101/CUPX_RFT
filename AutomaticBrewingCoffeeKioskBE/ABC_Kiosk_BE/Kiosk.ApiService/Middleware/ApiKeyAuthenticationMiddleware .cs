@@ -7,6 +7,12 @@ namespace Kiosk.ApiService.Middleware
     {
         public async Task InvokeAsync(HttpContext context, RequestDelegate next)
         {
+            if (context.Request.Path.Equals("/health", StringComparison.OrdinalIgnoreCase))
+            {
+                await next(context);
+                return;
+            }
+
             if (!context.Request.Headers.TryGetValue(ConstantValue.ApiKeyHeaderName, out var extractedApiKey) || !apiKeyValidator.IsValid(extractedApiKey))
             {
                 throw new UnauthorizedAccessException("Api Key is missing");

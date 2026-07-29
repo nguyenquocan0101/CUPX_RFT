@@ -1,7 +1,6 @@
 ﻿using CouchDB.Driver.ChangesFeed;
 using CouchDB.Driver;
 using Domain.CouchDbModels;
-using Microsoft.Azure.Devices;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -10,7 +9,6 @@ using Microsoft.Extensions.DependencyInjection;
 using Services.Utils;
 using CouchDB.Driver.DatabaseApiMethodOptions;
 using CouchDB.Driver.Exceptions;
-using System.Text.Json.Nodes;
 using CouchDb.Domain.Enums;
 using RabbitMQ.Client;
 using Shared.MessageStore;
@@ -27,7 +25,8 @@ public class CleanWorkflowObserverWorker : BackgroundService
     private readonly ILogger<WorkflowObserverWorker> _logger;
     private readonly string _lastSeqTxtpath;
     private string _lastSeq;
-    private readonly ServiceClient _serviceClient;
+    private readonly IDeviceMethodInvoker _deviceMethodInvoker;
+    private readonly IWorkflowDeliveryTracker _deliveryTracker;
     private readonly IServiceProvider _serviceProvider;
 
     private readonly IModel _workflowChannel;
@@ -35,7 +34,9 @@ public class CleanWorkflowObserverWorker : BackgroundService
 
     public CleanWorkflowObserverWorker(IServiceProvider provider, IConfiguration configuration,
         ILogger<WorkflowObserverWorker> logger, [FromKeyedServices(QueueConstants.QUEUE_WORKFLOW_EXECUTE)] IModel workflowChannel,
-        [FromKeyedServices(QueueConstants.QUEUE_STEP_UPDATE)] IModel stepAndWfChannel)
+        [FromKeyedServices(QueueConstants.QUEUE_STEP_UPDATE)] IModel stepAndWfChannel,
+        IDeviceMethodInvoker deviceMethodInvoker,
+        IWorkflowDeliveryTracker deliveryTracker)
     {
         _logger = logger;
         var url = configuration["CouchDB:Url"]!;
@@ -52,7 +53,8 @@ public class CleanWorkflowObserverWorker : BackgroundService
         if (!File.Exists(_lastSeqTxtpath))
             File.WriteAllText(_lastSeqTxtpath, _lastSeq);
 
-        _serviceClient = ServiceClient.CreateFromConnectionString(configuration["AzureServiceConn"]!);
+        _deviceMethodInvoker = deviceMethodInvoker;
+        _deliveryTracker = deliveryTracker;
         _serviceProvider = provider;
 
         _workflowChannel = workflowChannel;
@@ -129,7 +131,10 @@ public class CleanWorkflowObserverWorker : BackgroundService
                         }
                     case EWorkflowDataStatus.Cleaned:
                         {
-                            _workflowChannel.BasicAck(deliveryTag: workflow.DeliveryTag, multiple: false);
+                            if (_deliveryTracker.TryTake(workflow.DeliveryTag))
+                                _workflowChannel.BasicAck(deliveryTag: workflow.DeliveryTag, multiple: false);
+                            else
+                                _logger.LogWarning("Skipping stale cleaning workflow delivery tag {DeliveryTag} after restart.", workflow.DeliveryTag);
                             _logger.LogInformation("Cleaning workflow {WorkflowName} done.", workflow.WorkflowName);
 
                             var runtimeStateService = scope.ServiceProvider.GetRequiredService<IRuntimeStateService>();
@@ -148,21 +153,25 @@ public class CleanWorkflowObserverWorker : BackgroundService
         }
     }
 
-    private CloudToDeviceMethod BuildDeviceMethod(string methodName, string? parameters, string docId, string stepId)
+    private static DeviceCommandRequest CreateDeviceCommand(
+        string workflowId,
+        string stepId,
+        string deviceId,
+        string method,
+        string? parameters)
     {
-        var method = new CloudToDeviceMethod(methodName, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(5));
-        if (string.IsNullOrEmpty(parameters))
-        {
-            parameters = "{}";
-        }
-
-        var jsonNode = JsonNode.Parse(parameters).AsObject();
-        jsonNode["docId"] = docId;
-        jsonNode["stepId"] = stepId;
-
-        method.SetPayloadJson(jsonNode.ToJsonString());
-
-        return method;
+        var commandId = $"{workflowId}:{stepId}:clean";
+        return new DeviceCommandRequest(
+            commandId,
+            1,
+            commandId,
+            workflowId,
+            stepId,
+            deviceId,
+            method,
+            new Dictionary<string, string> { ["raw"] = parameters ?? string.Empty },
+            DateTimeOffset.UtcNow,
+            30000);
     }
 
     public enum StepGroupResult { Running, Paused, Failed, Done }
@@ -220,9 +229,9 @@ public class CleanWorkflowObserverWorker : BackgroundService
             Console.WriteLine($"Invoke method {step.Step.Name} with sequence {step.Step.Sequence}");
             try
             {
-                var methodInvoke = BuildDeviceMethod(step.Step.Function, step.Step.Parameters, docId: workflow.Id, stepId: step.Step.StepId);
-                var response = await _serviceClient.InvokeDeviceMethodAsync(step.Executor, methodInvoke);
-                return response.Status == 200;
+                var request = CreateDeviceCommand(workflow.Id, step.Step.StepId, step.Executor, step.Step.Function, step.Step.Parameters);
+                var response = await _deviceMethodInvoker.InvokeAsync(request);
+                return response.Status == "Completed";
 
                 //return true;
             }

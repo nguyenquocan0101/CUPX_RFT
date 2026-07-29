@@ -44,6 +44,10 @@ public partial class AutoBrewingBeContext : DbContext
 
     public virtual DbSet<Webhook> Webhooks { get; set; }
 
+    public virtual DbSet<LocalWebhookInbox> LocalWebhookInboxes { get; set; }
+
+    public virtual DbSet<LocalWebhookOutbox> LocalWebhookOutboxes { get; set; }
+
     public virtual DbSet<SyncEvent> SyncEvents { get; set; }
 
     public virtual DbSet<SyncTask> SyncTasks { get; set; }
@@ -97,6 +101,17 @@ public partial class AutoBrewingBeContext : DbContext
         modelBuilder.Entity<Product>().HasQueryFilter(u => !u.IsDeleted);
         modelBuilder.Entity<SystemConfig>().HasQueryFilter(u => !u.IsDeleted);
         modelBuilder.Entity<Webhook>().HasQueryFilter(u => !u.IsDeleted);
+        modelBuilder.Entity<LocalWebhookInbox>()
+            .HasIndex(x => new { x.Source, x.EventType, x.EventId })
+            .IsUnique();
+        modelBuilder.Entity<LocalWebhookOutbox>()
+            .HasIndex(x => x.InboxId)
+            .IsUnique();
+        modelBuilder.Entity<LocalWebhookOutbox>()
+            .HasOne(x => x.Inbox)
+            .WithOne(x => x.Outbox)
+            .HasForeignKey<LocalWebhookOutbox>(x => x.InboxId)
+            .OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<SyncEvent>().HasQueryFilter(u => !u.IsDeleted);
         modelBuilder.Entity<SyncTask>().HasQueryFilter(u => !u.IsDeleted);
         modelBuilder.Entity<LocationType>().HasQueryFilter(u => !u.IsDeleted);

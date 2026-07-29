@@ -40,7 +40,7 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
   bool isDrinkHere = false;
   bool isCreatingOrder = false;
   //default
-  PaymentGateway selectedPaymentGateway = PaymentGateway.mpos;
+  PaymentGateway selectedPaymentGateway = PaymentGateway.reso;
 
   final Color primaryColor = AppPalette.blue.primary;
   final Color lightPrimaryColor = AppPalette.blue.primary.withOpacity(0.1);
@@ -451,9 +451,9 @@ class _OrderConfirmationScreenState extends State<OrderConfirmationScreen> {
         children: [
           Expanded(
             child: _buildPaymentMethod(
-              'Chuyển khoản', 
+              'Sandbox',
               ImagePath.qrCode, 
-              PaymentGateway.mpos,
+              PaymentGateway.reso,
               isLoading,
             ),
           ),

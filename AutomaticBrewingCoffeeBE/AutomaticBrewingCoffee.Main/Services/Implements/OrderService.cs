@@ -33,8 +33,8 @@ namespace Services.Implements
 {
     public class OrderService : BaseService<OrderService>, IOrderService
     {
-        private readonly VNPayClient _vnPayClient;
-        private readonly MPOSClient _mPosClient;
+        private readonly VNPayClient? _vnPayClient;
+        private readonly MPOSClient? _mPosClient;
         private readonly ICapPublisher _capPublisher;
         private readonly IRedisService _redisService;
         private readonly RecyclableMemoryStreamManager _memoryStreamManager;
@@ -44,10 +44,11 @@ namespace Services.Implements
             IMapper mapper,
             ILoggerFactory loggerFactory,
             IHttpContextAccessor httpContextAccessor,
-            VNPayClient vnPayClient,
-            MPOSClient mPosClient,
             ICapPublisher capPublisher,
-            IRedisService redisService, RecyclableMemoryStreamManager memoryStreamManager) : base(
+            IRedisService redisService,
+            RecyclableMemoryStreamManager memoryStreamManager,
+            VNPayClient? vnPayClient = null,
+            MPOSClient? mPosClient = null) : base(
             unitOfWork,
             mapper,
             loggerFactory,

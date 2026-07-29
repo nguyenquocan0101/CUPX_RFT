@@ -11,7 +11,7 @@ public static class ApiKeyUtil
 {
     // Default charset: 62 ký tự (A-Z, a-z, 0-9)
     private const string DefaultChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-    private const string Key = "leminhducisagay!";
+    private const string EncryptionKeyEnvironmentVariable = "CUPX_API_KEY_ENCRYPTION_KEY";
 
     /// <summary>
     /// Generates a secure, random API key.
@@ -49,12 +49,16 @@ public static class ApiKeyUtil
     /// </summary>
     public static string Encrypt(string plainText)
     {
-        if (Key.Length != 16)
-            throw new ArgumentException("AES key must be exactly 16 characters (128 bits).");
+        return Encrypt(plainText, GetEncryptionKey());
+    }
+
+    public static string Encrypt(string plainText, string encryptionKey)
+    {
+        ValidateEncryptionKey(encryptionKey);
 
         using (Aes aes = Aes.Create())
         {
-            aes.Key = Encoding.UTF8.GetBytes(Key);
+            aes.Key = Encoding.UTF8.GetBytes(encryptionKey);
             aes.Mode = CipherMode.ECB;
             aes.Padding = PaddingMode.PKCS7;
 
@@ -72,12 +76,16 @@ public static class ApiKeyUtil
     /// </summary>
     public static string Decrypt(string base64CipherText)
     {
-        if (Key.Length != 16)
-            throw new ArgumentException("AES key must be exactly 16 characters (128 bits).");
+        return Decrypt(base64CipherText, GetEncryptionKey());
+    }
+
+    public static string Decrypt(string base64CipherText, string encryptionKey)
+    {
+        ValidateEncryptionKey(encryptionKey);
 
         using (Aes aes = Aes.Create())
         {
-            aes.Key = Encoding.UTF8.GetBytes(Key);
+            aes.Key = Encoding.UTF8.GetBytes(encryptionKey);
             aes.Mode = CipherMode.ECB;
             aes.Padding = PaddingMode.PKCS7;
 
@@ -87,6 +95,23 @@ public static class ApiKeyUtil
                 byte[] result = decryptor.TransformFinalBlock(cipherBytes, 0, cipherBytes.Length);
                 return Encoding.UTF8.GetString(result);
             }
+        }
+    }
+
+    private static string GetEncryptionKey()
+    {
+        return Environment.GetEnvironmentVariable(EncryptionKeyEnvironmentVariable)
+            ?? throw new InvalidOperationException(
+                $"{EncryptionKeyEnvironmentVariable} must be set before API keys can be encrypted or decrypted.");
+    }
+
+    private static void ValidateEncryptionKey(string encryptionKey)
+    {
+        if (Encoding.UTF8.GetByteCount(encryptionKey) != 16)
+        {
+            throw new ArgumentException(
+                "AES key must be exactly 16 bytes (128 bits).",
+                nameof(encryptionKey));
         }
     }
 }

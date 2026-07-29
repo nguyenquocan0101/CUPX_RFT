@@ -17,5 +17,10 @@ namespace Shared.MessageStore
         public const string QUEUE_ORDER = "order";
         public const string QUEUE_ORDER_ROUTING_KEY = "order.*";
         public const string QUEUE_ORDER_ROUTING_KEY_UPDATE = "order.update";
+
+        public const string EXCHANGE_DEVICE_COMMAND = "device-command";
+        public const string QUEUE_DEVICE_COMMAND = "device-command";
+        public const string QUEUE_DEVICE_COMMAND_DLQ = "device-command.dlq";
+        public const string ROUTING_DEVICE_COMMAND = "device.command";
     }
 }

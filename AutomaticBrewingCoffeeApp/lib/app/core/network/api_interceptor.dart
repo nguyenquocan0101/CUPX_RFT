@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'api_constants.dart';
 
 class ApiInterceptor extends Interceptor {
   @override
@@ -43,12 +44,13 @@ class ApiInterceptor extends Interceptor {
 
     try {
       final response = await Dio().post(
-        'https://orgftef4689.kiosk.dpdns.org/api/v1/auth/refresh',
-        data: {'refresh_token': refreshToken},
+        '${ApiConstants.baseUrl}/auth/refresh',
+        data: {'refreshToken': refreshToken},
       );
 
-      final newAccessToken = response.data['access_token'];
-      final newRefreshToken = response.data['refresh_token'];
+      final payload = response.data['response'] ?? response.data;
+      final newAccessToken = payload['accessToken'] ?? payload['access_token'];
+      final newRefreshToken = payload['refreshToken'] ?? payload['refresh_token'];
 
       await prefs.setString('access_token', newAccessToken);
       await prefs.setString('refresh_token', newRefreshToken);

@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using AutomaticBrewingCoffee.API.Extensions;
 using Hangfire;
 using Microsoft.IO;
+using Services.Local;
 
 var builder = WebApplication.CreateBuilder(new WebApplicationOptions
 {
@@ -18,27 +19,50 @@ var configuration = builder.Configuration
     .AddEnvironmentVariables()
     .Build();
 
-builder.WebHost.AddSentry(configuration);
+var localMode = LocalRuntimeDependency.IsLocalMode(
+    builder.Environment.EnvironmentName,
+    configuration);
+var backgroundJobsEnabled =
+    LocalRuntimeDependency.AreBackgroundJobsEnabled(localMode, configuration);
 
 var assemblies = AppDomain.CurrentDomain.GetAssemblies();
+
+if (!localMode)
+{
+    builder.WebHost.AddSentry(configuration);
+}
 
 builder.Services.AddSingleton<RecyclableMemoryStreamManager>();
 builder.Services.AddRabbitMQCap(configuration);
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddHttpClient();
 builder.Services.AddEmail(configuration);
-builder.Services.AddCloudflareConfig(configuration);
 builder.Services.AddRedis(configuration);
-builder.Services.AddMPOSConfig(builder.Configuration);
-builder.Services.AddAppHangFire(configuration);
 builder.Services.AddAutoMapper(assemblies);
 builder.Services.AddDatabase(configuration);
-builder.Services.AddFirebase(configuration);
-builder.Services.AddSupabase(configuration);
-builder.Services.AddVNPay(configuration);
 builder.Services.AddUnitOfWork();
 builder.Services.AddServices();
-builder.Services.AddAzureHub(configuration);
+
+if (localMode)
+{
+    builder.Services.AddLocalRuntime(configuration);
+    builder.Services.AddLocalProviders(configuration);
+}
+else
+{
+    builder.Services.AddCloudflareConfig(configuration);
+    builder.Services.AddMPOSConfig(configuration);
+    builder.Services.AddFirebase(configuration);
+    builder.Services.AddSupabase(configuration);
+    builder.Services.AddVNPay(configuration);
+    builder.Services.AddAzureHub(configuration);
+}
+
+if (backgroundJobsEnabled)
+{
+    builder.Services.AddAppHangFire(configuration);
+}
+
 builder.Services.AddAuthentication(configuration);
 builder.Services.AddConfigSwagger();
 builder.Services.AddEndpointsApiExplorer();
@@ -67,6 +91,23 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+if (localMode)
+{
+    app.UseDeveloperExceptionPage();
+}
+
+if (localMode && configuration.GetValue<bool>("LocalSeed:Enabled"))
+{
+    using var seedScope = app.Services.CreateScope();
+    await seedScope.ServiceProvider
+        .GetRequiredService<LocalDevelopmentSeeder>()
+        .SeedAsync();
+}
+
+if (localMode && args.Contains("--seed-only", StringComparer.OrdinalIgnoreCase))
+{
+    return;
+}
 
 // Configure the HTTP request pipeline.
 
@@ -82,17 +123,28 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-app.UseSentryTracing();
+if (!localMode)
+{
+    app.UseSentryTracing();
+}
+
 app.UseRouting();
 app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapHealthChecks("/health");
 app.MapControllers();
-app.ApplyMigration();
-app.UseHangfireDashboard();
 app.MapSignalRHub();
 
-ServicesDependency.RegisterRecurringJob();
+if (!localMode)
+{
+    app.ApplyMigration();
+}
+
+if (backgroundJobsEnabled)
+{
+    app.UseHangfireDashboard();
+    ServicesDependency.RegisterRecurringJob();
+}
 
 app.Run();

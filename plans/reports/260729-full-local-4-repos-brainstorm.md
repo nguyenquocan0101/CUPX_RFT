@@ -42,3 +42,15 @@ Người dùng muốn cả hệ thống chạy local trên máy, dùng Docker Co
 ## Delivery Note
 
 Kết quả cuối sẽ được gom vào remote mới `https://github.com/nguyenquocan0101/CUPX_RFT.git` dưới dạng một repo chứa 4 thư mục cấp cao. Chỉ push sau khi loại secret thật, kiểm tra clone/setup local và xác nhận commit push thành công.
+
+## Local Machine Audit
+
+Audit ngày 2026-07-29:
+
+- Docker CLI `28.5.1` và Docker Compose `2.40.3` đã cài, nhưng Docker Desktop Linux engine chưa chạy.
+- .NET SDK `10.0.202`, Node.js `22.12.0`, npm `10.9.0` và Flutter `3.44.6` đã cài.
+- PostgreSQL 17 và 18 đều chạy dạng Windows service; cổng tương ứng đang mở là `5432` và `5433`. `psql.exe` có trong thư mục cài PostgreSQL nhưng chưa có trong `PATH`.
+- SQL Server đã có service nghe trên `1433`; backend chính hiện dùng `UseSqlServer`, không dùng PostgreSQL.
+- Redis `6379`, RabbitMQ `5672`, CouchDB `5984`, MinIO `9000/9001`, API `5100/5160` và Next.js `3000` chưa chạy.
+
+Kết luận: không migrate backend chính sang PostgreSQL trong MVP local. Giữ SQL Server để tránh viết lại migrations/provider; dùng PostgreSQL local cho kiosk chỉ nếu phần EF/Npgsql được bật lại. Docker cung cấp Redis, RabbitMQ, CouchDB, MinIO và Mailpit. Auth/payment/webhook dùng adapter mock trong code; Gemini chưa thêm vì repo không có AI use case.

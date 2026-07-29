@@ -17,6 +17,7 @@ using Kiosk.ApiService.Middleware;
 using McMaster.NETCore.Plugins;
 using System.Data;
 using Services.Background;
+using Services.DeviceCommands;
 using Services.Dtos.DeviceMonitoring;
 using Services.WebSockets;
 using Domain.CouchDbModels;
@@ -74,10 +75,11 @@ namespace Kiosk.ApiService.Extensions
 
         public static IServiceCollection AddAppServices(this IServiceCollection services, IConfiguration config)
         {
-            services.AddHttpClient<CloudClient>(httpClient =>
+            services.Configure<MainBackendOptions>(config.GetSection("MAIN_BACKEND"));
+            services.AddHttpClient<IMainBackendClient, MainBackendClient>(httpClient =>
             {
-                httpClient.BaseAddress = new Uri(config["CloudConfig:BaseUrl"]!);
-
+                var baseUrl = config["MAIN_BACKEND:BaseUrl"] ?? "http://localhost:5100";
+                httpClient.BaseAddress = new Uri(baseUrl, UriKind.Absolute);
             });
             //services.AddScoped<IDeviceService, DeviceService>();
             //services.AddScoped<IOrderService, OrderService>();
@@ -88,6 +90,13 @@ namespace Kiosk.ApiService.Extensions
             services.AddScoped<IWorkflowService2, WorkflowService2>();
             services.AddScoped<IDeviceService2, DeviceService2>();
             services.AddScoped<IOrderCacheService, OrderCacheService>();
+            services.AddSingleton<IWorkflowDeliveryTracker, WorkflowDeliveryTracker>();
+
+            var hardwareMode = config["HARDWARE_MODE"] ?? (KioskRuntimeSettings.IsLocalMode(config) ? "simulator" : "azure");
+            if (string.Equals(hardwareMode, "azure", StringComparison.OrdinalIgnoreCase))
+                services.AddSingleton<IDeviceMethodInvoker, AzureDeviceMethodInvoker>();
+            else
+                services.AddSingleton<IDeviceMethodInvoker, RabbitMqDeviceMethodInvoker>();
 
             services.AddTransient<IApiKeyValidatorService, ApiKeyValidatorService>();
 

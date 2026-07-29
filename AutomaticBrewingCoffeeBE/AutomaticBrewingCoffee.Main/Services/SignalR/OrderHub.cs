@@ -85,9 +85,10 @@ public class OrderHub(ILoggerFactory loggerFactory, IUnitOfWork unitOfWork) : Hu
         }
 
 
-        _logger.LogInformation($"OrderHub.InvokeAuthentication: ApiKey = {apiKey}");
-        _logger.LogInformation($"OrderHub.InvokeAuthentication: ClientId = {clientId}");
-        _logger.LogInformation($"OrderHub.InvokeAuthentication: KioskId = {kiosk.KioskId}");
+        _logger.LogInformation(
+            "OrderHub authenticated client {ClientId} for kiosk {KioskId}",
+            clientId,
+            kiosk.KioskId);
 
         ClientIdToConnectionId[clientId] = Context.ConnectionId;
 

@@ -45,10 +45,11 @@ export const BaseService = {
     },
 
 
-    async post<T = any>({ url, payload, headers }: ApiRequest): Promise<T> {
+    async post<T = any>({ url, payload, params, headers }: ApiRequest): Promise<T> {
         if (!url) throw new Error("URL is required for POST request");
         try {
             const data = await axiosInstance.post<T, T>(url, payload, {
+                params,
                 headers: headers || {},
             });
             return data;

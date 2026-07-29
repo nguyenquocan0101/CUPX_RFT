@@ -1,7 +1,6 @@
 ﻿using CouchDB.Driver.ChangesFeed;
 using CouchDB.Driver;
 using Domain.CouchDbModels;
-using Microsoft.Azure.Devices;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -10,12 +9,13 @@ using Microsoft.Extensions.DependencyInjection;
 using Services.Utils;
 using CouchDB.Driver.DatabaseApiMethodOptions;
 using CouchDB.Driver.Exceptions;
-using System.Text.Json.Nodes;
 using CouchDb.Domain.Enums;
 using RabbitMQ.Client;
 using Shared.MessageStore;
 using static Domain.MessageRecords;
 using System.Text;
+using System.Text.Json;
+using Services.Interfaces;
 
 
 public class WorkflowObserverWorker : BackgroundService
@@ -26,7 +26,8 @@ public class WorkflowObserverWorker : BackgroundService
     private readonly ILogger<WorkflowObserverWorker> _logger;
     private readonly string _lastSeqTxtpath;
     private string _lastSeq;
-    private readonly ServiceClient _serviceClient;
+    private readonly IDeviceMethodInvoker _deviceMethodInvoker;
+    private readonly IWorkflowDeliveryTracker _deliveryTracker;
     private readonly IServiceProvider _serviceProvider;
 
     private readonly IModel _workflowChannel;
@@ -36,7 +37,9 @@ public class WorkflowObserverWorker : BackgroundService
     public WorkflowObserverWorker(IServiceProvider provider, IConfiguration configuration,
         ILogger<WorkflowObserverWorker> logger, [FromKeyedServices(QueueConstants.QUEUE_WORKFLOW_EXECUTE)] IModel workflowChannel,
         [FromKeyedServices(QueueConstants.QUEUE_WORKFLOW_EXECUTE)] IModel orderChannel,
-        [FromKeyedServices(QueueConstants.QUEUE_STEP_UPDATE)] IModel stepAndWfChannel)
+        [FromKeyedServices(QueueConstants.QUEUE_STEP_UPDATE)] IModel stepAndWfChannel,
+        IDeviceMethodInvoker deviceMethodInvoker,
+        IWorkflowDeliveryTracker deliveryTracker)
     {
         _logger = logger;
         var url = configuration["CouchDB:Url"]!;
@@ -53,7 +56,8 @@ public class WorkflowObserverWorker : BackgroundService
         if (!File.Exists(_lastSeqTxtpath))
             File.WriteAllText(_lastSeqTxtpath, _lastSeq);
 
-        _serviceClient = ServiceClient.CreateFromConnectionString(configuration["AzureServiceConn"]!);
+        _deviceMethodInvoker = deviceMethodInvoker;
+        _deliveryTracker = deliveryTracker;
         _serviceProvider = provider;
 
         _workflowChannel = workflowChannel;
@@ -156,7 +160,7 @@ public class WorkflowObserverWorker : BackgroundService
                             {
                                 PublishFinishProductMessage(workflow.OrderId, workflow.ProductId);
                                 _logger.LogInformation("Pushed message. Order {OrderId} is ready for product check.", workflow.OrderId);
-                                _workflowChannel.BasicAck(deliveryTag: workflow.DeliveryTag, multiple: false);
+                                AckWorkflowDelivery(workflow.DeliveryTag);
                                 _logger.LogInformation("Completed workflow {WorkflowName}", workflow.WorkflowName);
                             }
                             catch (Exception e)
@@ -259,7 +263,7 @@ public class WorkflowObserverWorker : BackgroundService
                                 if (callbackCurrentStep.State == EStepDataStatus.Failed)
                                 {
                                     _logger.LogError("Callback Step {0} failed. Notify to Cloud....", callbackCurrentStep.Step.Name);
-                                    _workflowChannel.BasicAck(deliveryTag: workflow.DeliveryTag, multiple: false);
+                                    AckWorkflowDelivery(workflow.DeliveryTag);
                                     File.WriteAllText(_lastSeqTxtpath, change.Seq);
                                     break;
                                 }
@@ -275,7 +279,7 @@ public class WorkflowObserverWorker : BackgroundService
                             {
                                 PublishFailProductMessage(workflow.OrderId, workflow.ProductId, workflow.Message);
                                 _logger.LogInformation("Pushed message. Order {OrderId} is ready for updating fail status.", workflow.OrderId);
-                                _workflowChannel.BasicAck(deliveryTag: workflow.DeliveryTag, multiple: false);
+                                AckWorkflowDelivery(workflow.DeliveryTag);
                                 _logger.LogInformation("Reseted workflow {WorkflowName}", workflow.WorkflowName);
                             }
                             catch (Exception e)
@@ -296,21 +300,48 @@ public class WorkflowObserverWorker : BackgroundService
         }
     }
 
-    private CloudToDeviceMethod BuildDeviceMethod(string methodName, string? parameters, string docId, string stepId)
+    private static Dictionary<string, string> ParseParameters(string? parameters)
     {
-        var method = new CloudToDeviceMethod(methodName, TimeSpan.FromSeconds(30), TimeSpan.FromSeconds(5));
-        if (string.IsNullOrEmpty(parameters))
+        if (string.IsNullOrWhiteSpace(parameters))
+            return new();
+
+        try
         {
-            parameters = "{}";
+            using var document = JsonDocument.Parse(parameters);
+            if (document.RootElement.ValueKind == JsonValueKind.Object)
+            {
+                return document.RootElement.EnumerateObject()
+                    .ToDictionary(property => property.Name, property => property.Value.GetRawText());
+            }
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            // Preserve malformed legacy payloads for the device error path.
         }
 
-        var jsonNode = JsonNode.Parse(parameters).AsObject();
-        jsonNode["docId"] = docId;
-        jsonNode["stepId"] = stepId;
+        return new Dictionary<string, string> { ["raw"] = parameters };
+    }
 
-        method.SetPayloadJson(jsonNode.ToJsonString());
-
-        return method;
+    private static DeviceCommandRequest CreateDeviceCommand(
+        string workflowId,
+        string stepId,
+        string deviceId,
+        string method,
+        string? parameters,
+        string suffix = "")
+    {
+        var commandId = $"{workflowId}:{stepId}{suffix}";
+        return new DeviceCommandRequest(
+            commandId,
+            1,
+            commandId,
+            workflowId,
+            stepId,
+            deviceId,
+            method,
+            ParseParameters(parameters),
+            DateTimeOffset.UtcNow,
+            30000);
     }
 
     public enum StepGroupResult { Running, Paused, Failed, Done }
@@ -371,9 +402,9 @@ public class WorkflowObserverWorker : BackgroundService
             Console.WriteLine($"Invoke method {step.Step.Name} with sequence {step.Step.Sequence}");
             try
             {
-                var methodInvoke = BuildDeviceMethod(step.Step.Function, step.Step.Parameters, docId: workflow.Id, stepId: step.Step.StepId);
-                var response = await _serviceClient.InvokeDeviceMethodAsync(step.Executor, methodInvoke);
-                return response.Status == 200;
+                var request = CreateDeviceCommand(workflow.Id, step.Step.StepId, step.Executor, step.Step.Function, step.Step.Parameters);
+                var response = await _deviceMethodInvoker.InvokeAsync(request);
+                return response.Status == "Completed";
 
                 //return true;
             }
@@ -393,6 +424,18 @@ public class WorkflowObserverWorker : BackgroundService
             //await UnlockDevicesAsync(lockedDevices);
             _logger.LogError("Error while invoking device. Failing workflow.");
             return new Tuple<StepGroupResult, List<string>>(StepGroupResult.Failed, stepIds);
+        }
+
+        foreach (var step in stepList)
+        {
+            var updateStepStateMsg = new UpdateStepStateMessages(
+                workflow.Id,
+                step.Step.StepId,
+                (int)EStepDataStatus.Done);
+            PublishMsgToUpdateWorkflowConsumer(
+                updateStepStateMsg,
+                nameof(UpdateStepStateMessages),
+                QueueConstants.QUEUE_STEP_UPDATE_ROUTING_KEY);
         }
 
         _logger.LogInformation("Workflow {WorkflowName} executed. Running step group: {StepGroup}", workflow.WorkflowName, string.Join(", ", stepIds));
@@ -557,6 +600,17 @@ public class WorkflowObserverWorker : BackgroundService
         await Task.WhenAll(unlockTasks);
     }
 
+    private void AckWorkflowDelivery(ulong deliveryTag)
+    {
+        if (!_deliveryTracker.TryTake(deliveryTag))
+        {
+            _logger.LogWarning("Skipping stale workflow delivery tag {DeliveryTag} after restart.", deliveryTag);
+            return;
+        }
+
+        _workflowChannel.BasicAck(deliveryTag, multiple: false);
+    }
+
     private async Task ProcessCallbackStep(WorkflowData workflow, StepData callbackStep, DeviceDocument device)
     {
 
@@ -582,10 +636,10 @@ public class WorkflowObserverWorker : BackgroundService
         try
         {
             Console.WriteLine($"Invoke method {callbackStep.Step.Name} with sequence {callbackStep.Step.Sequence} for reseting");
-            var methodInvoke = BuildDeviceMethod(callbackStep.Step.Function, callbackStep.Step.Parameters, docId: workflow.Id, stepId: callbackStep.Step.StepId);
-            var response = await _serviceClient.InvokeDeviceMethodAsync(device.DeviceId, methodInvoke);
-            iotHubCallOk = response.Status == 200;
-            Console.WriteLine($"Invoke reseult: {response.Status}. {response.GetPayloadAsJson()}");
+            var request = CreateDeviceCommand(workflow.Id, callbackStep.Step.StepId, device.DeviceId, callbackStep.Step.Function, callbackStep.Step.Parameters, ":callback");
+            var response = await _deviceMethodInvoker.InvokeAsync(request);
+            iotHubCallOk = response.Status == "Completed";
+            Console.WriteLine($"Invoke result: {response.Status}. {response.ErrorMessage}");
             //iotHubCallOk = true;
         }
         catch (Exception e)

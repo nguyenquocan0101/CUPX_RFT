@@ -52,7 +52,9 @@ const withAnalyzer = withBundleAnalyzer({
     enabled: process.env.ANALYZE === "true",
 });
 
-export default withSentryConfig(
+const sentryEnabled = process.env.LOCAL_MODE !== "true" && Boolean(process.env.NEXT_PUBLIC_SENTRY_DSN);
+
+const configuredNextConfig = sentryEnabled ? withSentryConfig(
     withAnalyzer(nextConfig),
     {
         org: "autobrew",
@@ -82,4 +84,6 @@ export default withSentryConfig(
         // https://vercel.com/docs/cron-jobs
         automaticVercelMonitors: true,
     }
-);
+    ) : withAnalyzer(nextConfig);
+
+export default configuredNextConfig;
