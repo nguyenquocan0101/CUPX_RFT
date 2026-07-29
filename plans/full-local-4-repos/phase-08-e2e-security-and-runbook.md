@@ -104,7 +104,9 @@ powershell -ExecutionPolicy Bypass -File .\scripts\local\Test-SourceScan.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\local\Test-LocalPerformance.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\local\Test-LocalBusinessFlow.ps1
 
+$env:LOCAL_MODE = 'true'
 dotnet test .\AutomaticBrewingCoffeeBE\AutomaticBrewingCoffee.Main\AutomaticBrewingCoffee.sln
+$env:LOCAL_MODE = $null
 dotnet test .\AutomaticBrewingCoffeeKioskBE\ABC_Kiosk_BE\Kiosk.ApiService.Tests\Kiosk.ApiService.Tests.csproj
 npm --prefix .\AutomaticBrewingCoffeeFE run build
 Push-Location .\AutomaticBrewingCoffeeApp
@@ -125,7 +127,7 @@ Clean clone validation uses a new temporary directory, follows only the runbook 
 - Clean clone follows the runbook without original remotes or cloud credentials.
 - Final commit/push occurs only after all evidence is recorded.
 
-Current evidence: `/health` p95 is 20.88 ms over 100 warmed requests; working-tree source scan passes; local business flow verifies menu read, order creation, sandbox-success callback, Preparing -> Completed workflow, order/detail reads and idempotent callback replay; MinIO upload/read is byte-for-byte; a depth-one clone from `origin/main` contains all four projects with a clean Git state and no build/dependency output. Reachable history still contains the legacy public host in the import commit; this is a public URL finding, not a credential, and current `ApiKeyUtil` reads its encryption key from process configuration with no current source finding. Real hardware remains the only machine-dependent acceptance gate.
+Current evidence: `/health` p95 is 20.88 ms over 100 warmed requests; working-tree source scan passes; local business flow verifies menu read, order creation, sandbox-success callback, Preparing -> Completed workflow, order/detail reads and idempotent callback replay; MinIO upload/read is byte-for-byte (`HTTP 202`, 68 bytes, matching SHA-256); durable webhook inbox/outbox replay passes after a real Main API process restart with `Succeeded|Succeeded|1|1|GET`; Main local tests pass `35/35` and Kiosk tests pass `4/4`; a depth-one clone from `origin/main` contains all four projects with a clean Git state and no build/dependency output. Reachable history still contains the legacy public host in the import commit; this is a public URL finding, not a credential, and current `ApiKeyUtil` reads its encryption key from process configuration with no current source finding. Real hardware remains the only machine-dependent acceptance gate.
 
 ## Rollback
 

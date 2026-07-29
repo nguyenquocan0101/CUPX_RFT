@@ -14,7 +14,12 @@ public class CreateDeviceTest(StartUpTestBase fixture) : IAsyncLifetime
     private readonly Func<Task> _resetDatabase = fixture.ResetDatabaseAsync;
     private readonly IDeviceService _deviceService = fixture.ServiceProvider.GetRequiredService<IDeviceService>();
 
-    public Task InitializeAsync() => Task.CompletedTask;
+    public async Task InitializeAsync()
+    {
+        await _dbContext.AddAsync(TestDataCreateDevice.CreateDeviceModel());
+        await _dbContext.SaveChangesAsync();
+        _dbContext.ChangeTracker.Clear();
+    }
 
     public async Task DisposeAsync() => await _resetDatabase();
 

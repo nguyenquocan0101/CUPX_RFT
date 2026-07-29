@@ -10,6 +10,7 @@ public class TestDataGetDevice
     private static Device CreateDevice(EDeviceStatus status) => new Device()
     {
         DeviceId = Guid.NewGuid().ToString(),
+        SerialNumber = Guid.NewGuid().ToString(),
         Name = "Cup Dropping Machine",
         Description = "Machine hold cup and drop",
         IsDeleted = false,
@@ -24,6 +25,7 @@ public class TestDataGetDevice
         var device = CreateDevice(EDeviceStatus.Stock);
         await dbContext.AddAsync(device);
         await dbContext.SaveChangesAsync();
+        dbContext.ChangeTracker.Clear();
         return device;
     }
 }

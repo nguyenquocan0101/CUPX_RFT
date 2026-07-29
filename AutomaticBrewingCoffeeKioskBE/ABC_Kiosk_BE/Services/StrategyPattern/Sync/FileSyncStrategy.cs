@@ -1,5 +1,6 @@
 ﻿using Domain.Models;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using System;
@@ -17,10 +18,22 @@ namespace Services.StrategyPattern.Sync
         private  string _entityDirectory;
         private readonly JsonSerializerOptions _jsonOptions;
         private readonly ILogger<FileSyncStrategy<TEntity>> _logger;
+        private readonly bool _preserveLocalWorkflowFixtures;
 
-        public FileSyncStrategy(IWebHostEnvironment webHostEnvironment, ILogger<FileSyncStrategy<TEntity>> logger)
+        public FileSyncStrategy(
+            IWebHostEnvironment webHostEnvironment,
+            ILogger<FileSyncStrategy<TEntity>> logger,
+            IConfiguration configuration)
         {
             _logger = logger;
+            _preserveLocalWorkflowFixtures = string.Equals(
+                configuration["LOCAL_MODE"],
+                "true",
+                StringComparison.OrdinalIgnoreCase)
+                || string.Equals(
+                    configuration["ASPNETCORE_ENVIRONMENT"],
+                    "Local",
+                    StringComparison.OrdinalIgnoreCase);
             var dataDirectory = Path.Combine(webHostEnvironment.ContentRootPath, "DataStorage");
             _entityDirectory = Path.Combine(dataDirectory, typeof(TEntity).Name);
             Directory.CreateDirectory(_entityDirectory);
@@ -40,6 +53,11 @@ namespace Services.StrategyPattern.Sync
                 _entityDirectory = fileFunc();
             }
             var filePath = Path.Combine(_entityDirectory, $"{entityId}.json");
+            if (IsProtectedLocalWorkflowFixture(filePath))
+            {
+                _logger.LogDebug("Preserved local workflow fixture {EntityId}.", entityId);
+                return Task.CompletedTask;
+            }
             if (File.Exists(filePath))
             {
                 File.Delete(filePath);
@@ -98,6 +116,7 @@ namespace Services.StrategyPattern.Sync
                 var directoryInfo = new DirectoryInfo(_entityDirectory);
                 foreach (var file in directoryInfo.GetFiles())
                 {
+                    if (IsProtectedLocalWorkflowFixture(file.FullName)) continue;
                     file.Delete();
                 }
             }
@@ -148,6 +167,14 @@ namespace Services.StrategyPattern.Sync
                 _logger.LogError(ex, $"Error saving entity {entityId} to file.");
                 throw;
             }
+        }
+
+        private bool IsProtectedLocalWorkflowFixture(string filePath)
+        {
+            return _preserveLocalWorkflowFixtures
+                && typeof(TEntity) == typeof(Workflow)
+                && Path.GetFileNameWithoutExtension(filePath)
+                    .StartsWith("local-", StringComparison.OrdinalIgnoreCase);
         }
     }
 }

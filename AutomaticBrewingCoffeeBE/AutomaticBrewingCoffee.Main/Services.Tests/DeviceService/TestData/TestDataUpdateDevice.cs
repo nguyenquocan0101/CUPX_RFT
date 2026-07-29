@@ -10,6 +10,7 @@ public class TestDataUpdateDevice
     private static Device CreateDevice(EDeviceStatus status) => new Device()
     {
         DeviceId = Guid.NewGuid().ToString(),
+        SerialNumber = Guid.NewGuid().ToString(),
         Name = "Cup Dropping Machine",
         Description = "Machine hold cup and drop",
         IsDeleted = false,
@@ -24,11 +25,13 @@ public class TestDataUpdateDevice
         var device = CreateDevice(EDeviceStatus.Stock);
         await dbContext.AddAsync(device);
         await dbContext.SaveChangesAsync();
+        dbContext.ChangeTracker.Clear();
         return device;
     }
 
     public static UpdateDeviceDto CreateUpdateDeviceDto() => new UpdateDeviceDto()
     {
+        SerialNumber = "local-test-serial",
         Name = "Cup Machine",
         Description = "Hold cup and drop",
         Status = EDeviceStatus.Maintain.ToString(),

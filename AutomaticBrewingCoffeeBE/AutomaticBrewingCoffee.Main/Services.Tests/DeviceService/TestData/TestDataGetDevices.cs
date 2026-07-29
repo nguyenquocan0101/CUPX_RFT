@@ -11,103 +11,103 @@ public class TestDataGetDevices
     {
         new Device
         {
-            DeviceId = Guid.NewGuid().ToString(), Name = "Cup Dropping Machine",
+            DeviceId = Guid.NewGuid().ToString(), SerialNumber = Guid.NewGuid().ToString(), Name = "Cup Dropping Machine",
             Description = "Drops cups automatically", IsDeleted = false, DeletedDate = null,
             Status = EDeviceStatus.Stock.ToString(), CreatedDate = DateTime.UtcNow, UpdatedDate = null
         },
         new Device
         {
-            DeviceId = Guid.NewGuid().ToString(), Name = "Coffee Brewer A", Description = "Brews coffee - Model A",
+            DeviceId = Guid.NewGuid().ToString(), SerialNumber = Guid.NewGuid().ToString(), Name = "Coffee Brewer A", Description = "Brews coffee - Model A",
             IsDeleted = false, DeletedDate = null, Status = EDeviceStatus.Maintain.ToString(),
             CreatedDate = DateTime.UtcNow, UpdatedDate = null
         },
         new Device
         {
-            DeviceId = Guid.NewGuid().ToString(), Name = "Milk Frother", Description = "Froths milk for lattes",
+            DeviceId = Guid.NewGuid().ToString(), SerialNumber = Guid.NewGuid().ToString(), Name = "Milk Frother", Description = "Froths milk for lattes",
             IsDeleted = false, DeletedDate = null, Status = EDeviceStatus.Stock.ToString(),
             CreatedDate = DateTime.UtcNow, UpdatedDate = null
         },
         new Device
         {
-            DeviceId = Guid.NewGuid().ToString(), Name = "Sugar Dispenser", Description = "Dispenses sugar",
+            DeviceId = Guid.NewGuid().ToString(), SerialNumber = Guid.NewGuid().ToString(), Name = "Sugar Dispenser", Description = "Dispenses sugar",
             IsDeleted = false, DeletedDate = null, Status = EDeviceStatus.Stock.ToString(),
             CreatedDate = DateTime.UtcNow, UpdatedDate = null
         },
         new Device
         {
-            DeviceId = Guid.NewGuid().ToString(), Name = "Robot Arm 1", Description = "Picks and places cups",
+            DeviceId = Guid.NewGuid().ToString(), SerialNumber = Guid.NewGuid().ToString(), Name = "Robot Arm 1", Description = "Picks and places cups",
             IsDeleted = false, DeletedDate = null, Status = EDeviceStatus.Stock.ToString(),
             CreatedDate = DateTime.UtcNow, UpdatedDate = null
         },
         new Device
         {
-            DeviceId = Guid.NewGuid().ToString(), Name = "Robot Arm 2", Description = "Assists in assembly",
+            DeviceId = Guid.NewGuid().ToString(), SerialNumber = Guid.NewGuid().ToString(), Name = "Robot Arm 2", Description = "Assists in assembly",
             IsDeleted = false, DeletedDate = null, Status = EDeviceStatus.Maintain.ToString(),
             CreatedDate = DateTime.UtcNow, UpdatedDate = null
         },
         new Device
         {
-            DeviceId = Guid.NewGuid().ToString(), Name = "Tablet Controller", Description = "UI for placing orders",
+            DeviceId = Guid.NewGuid().ToString(), SerialNumber = Guid.NewGuid().ToString(), Name = "Tablet Controller", Description = "UI for placing orders",
             IsDeleted = false, DeletedDate = null, Status = EDeviceStatus.Stock.ToString(),
             CreatedDate = DateTime.UtcNow, UpdatedDate = null
         },
         new Device
         {
-            DeviceId = Guid.NewGuid().ToString(), Name = "Heater", Description = "Keeps drinks warm", IsDeleted = false,
+            DeviceId = Guid.NewGuid().ToString(), SerialNumber = Guid.NewGuid().ToString(), Name = "Heater", Description = "Keeps drinks warm", IsDeleted = false,
             DeletedDate = null, Status = EDeviceStatus.Maintain.ToString(), CreatedDate = DateTime.UtcNow,
             UpdatedDate = null
         },
         new Device
         {
-            DeviceId = Guid.NewGuid().ToString(), Name = "Cooler", Description = "Cools drinks", IsDeleted = false,
+            DeviceId = Guid.NewGuid().ToString(), SerialNumber = Guid.NewGuid().ToString(), Name = "Cooler", Description = "Cools drinks", IsDeleted = false,
             DeletedDate = null, Status = EDeviceStatus.Stock.ToString(), CreatedDate = DateTime.UtcNow,
             UpdatedDate = null
         },
         new Device
         {
-            DeviceId = Guid.NewGuid().ToString(), Name = "Payment Terminal", Description = "Handles payment",
+            DeviceId = Guid.NewGuid().ToString(), SerialNumber = Guid.NewGuid().ToString(), Name = "Payment Terminal", Description = "Handles payment",
             IsDeleted = false, DeletedDate = null, Status = EDeviceStatus.Stock.ToString(),
             CreatedDate = DateTime.UtcNow, UpdatedDate = null
         },
         new Device
         {
-            DeviceId = Guid.NewGuid().ToString(), Name = "Water Pump", Description = "Pumps water", IsDeleted = false,
+            DeviceId = Guid.NewGuid().ToString(), SerialNumber = Guid.NewGuid().ToString(), Name = "Water Pump", Description = "Pumps water", IsDeleted = false,
             DeletedDate = null, Status = EDeviceStatus.Working.ToString(), CreatedDate = DateTime.UtcNow,
             UpdatedDate = null
         },
         new Device
         {
-            DeviceId = Guid.NewGuid().ToString(), Name = "Cup Sensor", Description = "Detects cup presence",
+            DeviceId = Guid.NewGuid().ToString(), SerialNumber = Guid.NewGuid().ToString(), Name = "Cup Sensor", Description = "Detects cup presence",
             IsDeleted = false, DeletedDate = null, Status = EDeviceStatus.Stock.ToString(),
             CreatedDate = DateTime.UtcNow, UpdatedDate = null
         },
         new Device
         {
-            DeviceId = Guid.NewGuid().ToString(), Name = "Bean Grinder", Description = "Grinds coffee beans",
+            DeviceId = Guid.NewGuid().ToString(), SerialNumber = Guid.NewGuid().ToString(), Name = "Bean Grinder", Description = "Grinds coffee beans",
             IsDeleted = false, DeletedDate = null, Status = EDeviceStatus.Stock.ToString(),
             CreatedDate = DateTime.UtcNow, UpdatedDate = null
         },
         new Device
         {
-            DeviceId = Guid.NewGuid().ToString(), Name = "Trash Compactor", Description = "Disposes waste",
+            DeviceId = Guid.NewGuid().ToString(), SerialNumber = Guid.NewGuid().ToString(), Name = "Trash Compactor", Description = "Disposes waste",
             IsDeleted = false, DeletedDate = null, Status = EDeviceStatus.Stock.ToString(),
             CreatedDate = DateTime.UtcNow, UpdatedDate = null
         },
         new Device
         {
-            DeviceId = Guid.NewGuid().ToString(), Name = "Stirrer", Description = "Stirs drinks", IsDeleted = false,
+            DeviceId = Guid.NewGuid().ToString(), SerialNumber = Guid.NewGuid().ToString(), Name = "Stirrer", Description = "Stirs drinks", IsDeleted = false,
             DeletedDate = null, Status = EDeviceStatus.Working.ToString(), CreatedDate = DateTime.UtcNow,
             UpdatedDate = null
         },
         new Device
         {
-            DeviceId = Guid.NewGuid().ToString(), Name = "Mixer", Description = "Mixes ingredients", IsDeleted = false,
+            DeviceId = Guid.NewGuid().ToString(), SerialNumber = Guid.NewGuid().ToString(), Name = "Mixer", Description = "Mixes ingredients", IsDeleted = false,
             DeletedDate = null, Status = EDeviceStatus.Stock.ToString(), CreatedDate = DateTime.UtcNow,
             UpdatedDate = null
         },
         new Device
         {
-            DeviceId = Guid.NewGuid().ToString(), Name = "Espresso Maker", Description = "Makes espresso shots",
+            DeviceId = Guid.NewGuid().ToString(), SerialNumber = Guid.NewGuid().ToString(), Name = "Espresso Maker", Description = "Makes espresso shots",
             IsDeleted = false, DeletedDate = null, Status = EDeviceStatus.Working.ToString(),
             CreatedDate = DateTime.UtcNow, UpdatedDate = null
         }
@@ -118,6 +118,7 @@ public class TestDataGetDevices
         var devices = CreateDevices();
         await dbContext.AddRangeAsync(devices);
         await dbContext.SaveChangesAsync();
+        dbContext.ChangeTracker.Clear();
         return devices;
     }
 

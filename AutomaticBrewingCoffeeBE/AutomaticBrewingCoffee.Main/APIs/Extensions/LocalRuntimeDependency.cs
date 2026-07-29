@@ -1,5 +1,6 @@
 using AutomaticBrewingCoffee.API.Health;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Services.AzureIotHub;
 using Services.Firebase;
 using Services.Local;
 using Services.Supabase;
@@ -30,6 +31,8 @@ public static class LocalRuntimeDependency
 
         services.RemoveAll<ISupabaseStorageService>();
         services.AddScoped<ISupabaseStorageService, DisabledSupabaseStorageService>();
+
+        services.AddSingleton<DeviceManager>();
 
         services.Configure<LocalSeedOptions>(configuration.GetSection("LocalSeed"));
         services.AddScoped<LocalDevelopmentSeeder>();

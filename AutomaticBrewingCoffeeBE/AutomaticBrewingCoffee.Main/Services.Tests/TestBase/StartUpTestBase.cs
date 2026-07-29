@@ -4,6 +4,7 @@ using AutomaticBrewingCoffee.Domain.Context;
 using AutomaticBrewingCoffee.Repository.Implement;
 using AutomaticBrewingCoffee.Repository.Interfaces;
 using DotNet.Testcontainers.Builders;
+using DotNetCore.CAP;
 using FirebaseAdmin;
 using FirebaseAdmin.Auth;
 using Google.Apis.Auth.OAuth2;
@@ -12,10 +13,13 @@ using Hangfire.MemoryStorage;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Moq;
 using Respawn;
+using Services.AzureIotHub;
 using Services.Firebase;
 using Services.Implements;
 using Services.Interfaces;
+using Services.Local;
 using Services.Redis;
 using StackExchange.Redis;
 using Testcontainers.MsSql;
@@ -72,11 +76,25 @@ public class StartUpTestBase : IAsyncLifetime
         var services = new ServiceCollection();
 
         // Register your services here
-        var configuration = new ConfigurationBuilder()
+        IConfiguration configuration = new ConfigurationBuilder()
             .SetBasePath(Directory.GetCurrentDirectory())
             .AddJsonFile("appsettings.json", optional: true)
             .AddEnvironmentVariables()
             .Build();
+        var localMode = configuration.GetValue<bool>("LOCAL_MODE")
+            || string.Equals(configuration["ASPNETCORE_ENVIRONMENT"], "Local", StringComparison.OrdinalIgnoreCase);
+        if (localMode && string.IsNullOrWhiteSpace(configuration["Jwt:Key"]))
+        {
+            configuration = new ConfigurationBuilder()
+                .AddConfiguration(configuration)
+                .AddInMemoryCollection(new Dictionary<string, string?>
+                {
+                    ["Jwt:Key"] = "cupx-local-test-jwt-key-2026-0001",
+                    ["Jwt:Issuer"] = "AutoBrewing",
+                    ["Jwt:Audience"] = "AutoBrewingUsers"
+                })
+                .Build();
+        }
         var assemblies = new[]
         {
             typeof(DeviceMapper).Assembly,
@@ -91,10 +109,9 @@ public class StartUpTestBase : IAsyncLifetime
             typeof(WorkflowMapper).Assembly,
         };
         var firebaseOptions = configuration.GetSection("Firebase").Get<FirebaseOptions>()!;
-        var credentialPath = Path.Combine(Directory.GetCurrentDirectory(), firebaseOptions.Credential);
-
-        if (FirebaseApp.DefaultInstance == null)
+        if (!localMode && FirebaseApp.DefaultInstance == null)
         {
+            var credentialPath = Path.Combine(Directory.GetCurrentDirectory(), firebaseOptions.Credential);
             FirebaseApp.Create(new AppOptions
             {
                 Credential = GoogleCredential.FromFile(credentialPath),
@@ -107,9 +124,10 @@ public class StartUpTestBase : IAsyncLifetime
         services.AddHttpClient();
         services.AddLogging();
         services.AddSingleton(DbContext);
-        services.AddSingleton(FirebaseAuth.DefaultInstance);
         services.AddSingleton(firebaseOptions);
         services.AddSingleton<IConfiguration>(configuration);
+        services.AddSingleton<ICapPublisher>(_ => new Mock<ICapPublisher>().Object);
+        services.AddSingleton<DeviceManager>();
         services.AddSingleton<IConnectionMultiplexer>(sp =>
             ConnectionMultiplexer.Connect(_redisContainer.GetConnectionString()));
         services.AddAutoMapper(assemblies);
@@ -119,7 +137,15 @@ public class StartUpTestBase : IAsyncLifetime
         services.AddScoped<IUnitOfWork, UnitOfWork<AutoBrewingBeContext>>();
         services.AddScoped<IUnitOfWork<AutoBrewingBeContext>, UnitOfWork<AutoBrewingBeContext>>();
         services.AddScoped<IRedisService, RedisService>();
-        services.AddScoped<IFirebaseAuthService, FirebaseAuthService>();
+        if (localMode)
+        {
+            services.AddScoped<IFirebaseAuthService, DisabledFirebaseAuthService>();
+        }
+        else
+        {
+            services.AddSingleton(FirebaseAuth.DefaultInstance);
+            services.AddScoped<IFirebaseAuthService, FirebaseAuthService>();
+        }
         services.AddScoped<IAuthService, Implements.AuthService>();
         services.AddScoped<IDeviceService, Implements.DeviceService>();
         services.AddScoped<IStoreService, Implements.StoreService>();

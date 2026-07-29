@@ -136,12 +136,24 @@ public sealed class LocalDevelopmentSeeder(
             context.Workflows.Add(data.Workflow);
         }
 
+        if (!await context.Workflows.IgnoreQueryFilters()
+                .AnyAsync(x => x.WorkflowId == data.WorkflowMaking.WorkflowId, cancellationToken))
+        {
+            context.Workflows.Add(data.WorkflowMaking);
+        }
+
         await context.SaveChangesAsync(cancellationToken);
 
         if (!await context.Steps.IgnoreQueryFilters()
                 .AnyAsync(x => x.StepId == data.Step.StepId, cancellationToken))
         {
             context.Steps.Add(data.Step);
+        }
+
+        if (!await context.Steps.IgnoreQueryFilters()
+                .AnyAsync(x => x.StepId == data.StepMaking.StepId, cancellationToken))
+        {
+            context.Steps.Add(data.StepMaking);
         }
 
         await context.SaveChangesAsync(cancellationToken);

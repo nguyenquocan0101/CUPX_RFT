@@ -29,6 +29,8 @@ public sealed class LocalSeedData
     public required KioskDeviceMapping KioskDeviceMapping { get; init; }
     public required Workflow Workflow { get; init; }
     public required Step Step { get; init; }
+    public required Workflow WorkflowMaking { get; init; }
+    public required Step StepMaking { get; init; }
     public required IReadOnlyList<Webhook> Webhooks { get; init; }
 
     public static LocalSeedData Create(LocalSeedOptions options, string encryptionKey)
@@ -230,6 +232,27 @@ public sealed class LocalSeedData
                 Name = "Complete local order",
                 Type = EStepType.CompleteOrderCommand.ToString(),
                 Sequence = 1,
+                CreatedDate = CreatedDate
+            },
+            WorkflowMaking = new Workflow
+            {
+                WorkflowId = "local-workflow-making",
+                ProductId = productMakingId,
+                KioskVersionId = kioskVersionId,
+                Name = "Local Coffee Making Workflow",
+                Description = "Deterministic local workflow fixture for the product variant",
+                Type = EWorkflowType.Activity.ToString(),
+                CreatedDate = CreatedDate
+            },
+            StepMaking = new Step
+            {
+                StepId = "local-step-making",
+                WorkflowId = "local-workflow-making",
+                DeviceModelId = deviceModelId,
+                Name = "Simulator dispense",
+                Type = "dispense",
+                Sequence = 1,
+                Parameters = "{}",
                 CreatedDate = CreatedDate
             },
             Webhooks =
