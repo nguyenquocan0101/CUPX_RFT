@@ -14,8 +14,8 @@
     "title": "Run both backends against local endpoints without cloud credentials",
     "user_visible_behavior": "so that login, menu read, order creation, and order status updates work entirely on the local machine",
     "verification_command": "powershell -ExecutionPolicy Bypass -File .\\scripts\\local\\Smoke-Test.ps1 -HardwareMode simulator",
-    "status": "active",
-    "evidence": "Phase 02 APPROVED: 88 migrations; idempotent local seed; health/login/JWT/refresh verified. Phase 03 verified: Kiosk health/ping auth on 5160, MainBackendClient localhost routing, CouchDB/RabbitMQ persistence across two restarts. Full menu/order E2E remains for later phases.",
+    "status": "passing",
+    "evidence": "Phase 02 APPROVED: 88 migrations; idempotent local seed; health/login/JWT/refresh verified. Phase 03 verified: Kiosk health/ping auth on 5160, MainBackendClient localhost routing, CouchDB/RabbitMQ persistence across two restarts. Test-LocalBusinessFlow verifies kiosk menu read, local RESO order creation, sandbox-success callback, Preparing -> Completed workflow, admin order read, order-details read, and idempotent callback replay.",
     "notes": "",
     "priority": "P1"
   },
@@ -44,8 +44,8 @@
     "title": "Centralize local Next.js and Flutter endpoints",
     "user_visible_behavior": "so that web and mobile clients cannot accidentally call production API, refresh, export, or SignalR URLs in local mode",
     "verification_command": "powershell -ExecutionPolicy Bypass -File .\\scripts\\local\\Test-Clients.ps1",
-    "status": "active",
-    "evidence": "Next.js build, executable URL scan, FVM 3.41.9 Flutter analyze and Flutter test pass. Existing tracked FE sample configuration still contains legacy production defaults and needs placeholder cleanup before this feature can pass.",
+    "status": "passing",
+    "evidence": "Next.js build, executable URL scan, FVM 3.41.9 Flutter analyze and Flutter test pass. Tracked FE sample configuration now uses localhost:5100 for API proxy, API base and SignalR hub.",
     "notes": "",
     "priority": "P1"
   }

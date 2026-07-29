@@ -1,0 +1,24 @@
+{
+  "workflowId": "local-workflow-making",
+  "productId": "local-product-making",
+  "name": "Local Coffee Making Workflow",
+  "description": "Deterministic local workflow fixture for the product variant",
+  "type": 0,
+  "product": null,
+  "steps": [
+    {
+      "stepId": "local-step-making",
+      "workflowId": "local-workflow-making",
+      "name": "Simulator dispense",
+      "function": "dispense",
+      "deviceModelId": "local-device-model",
+      "sequence": 1,
+      "maxRetries": null,
+      "callbackWorkflowId": null,
+      "callbackStepCode": null,
+      "stepCode": null,
+      "parameters": "{}",
+      "conditions": []
+    }
+  ]
+}

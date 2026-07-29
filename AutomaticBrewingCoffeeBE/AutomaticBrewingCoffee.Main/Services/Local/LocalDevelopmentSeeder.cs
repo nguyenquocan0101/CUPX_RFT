@@ -68,6 +68,12 @@ public sealed class LocalDevelopmentSeeder(
             context.Products.Add(data.Product);
         }
 
+        if (!await context.Products.IgnoreQueryFilters()
+                .AnyAsync(x => x.ProductId == data.ProductMaking.ProductId, cancellationToken))
+        {
+            context.Products.Add(data.ProductMaking);
+        }
+
         if (!await context.MenuProductMappings.IgnoreQueryFilters()
                 .AnyAsync(
                     x => x.MenuId == data.MenuProductMapping.MenuId
@@ -106,6 +112,15 @@ public sealed class LocalDevelopmentSeeder(
             context.KioskVersionProductMappings.Add(data.KioskVersionProductMapping);
         }
 
+        if (!await context.KioskVersionProductMappings.IgnoreQueryFilters()
+                .AnyAsync(
+                    x => x.KioskVersionId == data.KioskVersionProductMappingMaking.KioskVersionId
+                        && x.ProductId == data.KioskVersionProductMappingMaking.ProductId,
+                    cancellationToken))
+        {
+            context.KioskVersionProductMappings.Add(data.KioskVersionProductMappingMaking);
+        }
+
         if (!await context.KioskVersionDeviceModelMappings.IgnoreQueryFilters()
                 .AnyAsync(
                     x => x.KioskVersionId == data.KioskVersionDeviceModelMapping.KioskVersionId
@@ -139,12 +154,19 @@ public sealed class LocalDevelopmentSeeder(
 
         await context.SaveChangesAsync(cancellationToken);
 
-        if (!await context.KioskDeviceMappings.IgnoreQueryFilters()
-                .AnyAsync(
-                    x => x.KioskDeviceMappingId == data.KioskDeviceMapping.KioskDeviceMappingId,
-                    cancellationToken))
+        var kioskDeviceMapping = await context.KioskDeviceMappings
+            .IgnoreQueryFilters()
+            .SingleOrDefaultAsync(
+                x => x.KioskDeviceMappingId == data.KioskDeviceMapping.KioskDeviceMappingId,
+                cancellationToken);
+        if (kioskDeviceMapping is null)
         {
             context.KioskDeviceMappings.Add(data.KioskDeviceMapping);
+        }
+        else if (!string.Equals(kioskDeviceMapping.Side, data.KioskDeviceMapping.Side, StringComparison.Ordinal))
+        {
+            kioskDeviceMapping.Side = data.KioskDeviceMapping.Side;
+            context.KioskDeviceMappings.Update(kioskDeviceMapping);
         }
 
         foreach (var webhook in data.Webhooks)

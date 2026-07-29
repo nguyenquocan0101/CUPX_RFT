@@ -1,5 +1,7 @@
 import 'package:abc_androidapp/app/core/helpers/price_formatter.dart';
 import 'package:abc_androidapp/app/core/router/app_router.dart';
+import 'package:abc_androidapp/app/core/dependency_injection/service_location.dart';
+import 'package:abc_androidapp/app/data/datasources/order_datasource.dart';
 import 'package:abc_androidapp/app/data/models/payment/payment_signal.dart';
 import 'package:abc_androidapp/app/presentation/blocs/order/order_bloc.dart';
 import 'package:abc_androidapp/app/presentation/blocs/signalr/signalr_bloc.dart';
@@ -220,8 +222,17 @@ class _PaymentInfoScreenState extends State<PaymentInfoScreen> {
     return false;
   }
 
-  void _handleSandboxPaymentSuccess() {
+  Future<void> _handleSandboxPaymentSuccess() async {
     if (!mounted || orderId.isEmpty) return;
+
+    final confirmed =
+        await sl<OrderDatasource>().markSandboxPaymentSuccess(orderId);
+    if (!confirmed) {
+      if (mounted) {
+        CustomToast.showError(context, 'Không thể xác nhận thanh toán Sandbox');
+      }
+      return;
+    }
 
     cart.clear();
     signalRBloc.add(UnsubscribeEvent(eventName: "ReceiveTrans"));
@@ -393,5 +404,4 @@ class _PaymentInfoScreenState extends State<PaymentInfoScreen> {
       ),
     );
   }
-
 }

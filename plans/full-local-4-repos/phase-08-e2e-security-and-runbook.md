@@ -15,6 +15,7 @@ Create:
 - `scripts/local/Reset-LocalState.ps1`
 - `scripts/local/Test-SourceScan.ps1`
 - `scripts/local/Test-LocalPerformance.ps1`
+- `scripts/local/Test-LocalBusinessFlow.ps1`
 - `scripts/local/Test-Persistence.ps1`
 - `docs/local-development.md` final runbook updates
 - `docs/local-troubleshooting.md`
@@ -101,6 +102,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\local\Smoke-Test.ps1 -Hardwar
 powershell -ExecutionPolicy Bypass -File .\scripts\local\Test-Persistence.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\local\Test-SourceScan.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\local\Test-LocalPerformance.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\local\Test-LocalBusinessFlow.ps1
 
 dotnet test .\AutomaticBrewingCoffeeBE\AutomaticBrewingCoffee.Main\AutomaticBrewingCoffee.sln
 dotnet test .\AutomaticBrewingCoffeeKioskBE\ABC_Kiosk_BE\Kiosk.ApiService.Tests\Kiosk.ApiService.Tests.csproj
@@ -123,7 +125,7 @@ Clean clone validation uses a new temporary directory, follows only the runbook 
 - Clean clone follows the runbook without original remotes or cloud credentials.
 - Final commit/push occurs only after all evidence is recorded.
 
-Current evidence: `/health` p95 is 20.88 ms over 100 warmed requests; working-tree source scan passes; a depth-one clone from `origin/main` contains all four projects with a clean Git state and no build/dependency output. Reachable history still contains the legacy public host in the import commit; this is a public URL finding, not a credential, and current `ApiKeyUtil` reads its encryption key from process configuration with no current source finding. Real hardware and tracked legacy frontend sample cleanup remain operator/repository follow-up gates.
+Current evidence: `/health` p95 is 20.88 ms over 100 warmed requests; working-tree source scan passes; local business flow verifies menu read, order creation, sandbox-success callback, Preparing -> Completed workflow, order/detail reads and idempotent callback replay; MinIO upload/read is byte-for-byte; a depth-one clone from `origin/main` contains all four projects with a clean Git state and no build/dependency output. Reachable history still contains the legacy public host in the import commit; this is a public URL finding, not a credential, and current `ApiKeyUtil` reads its encryption key from process configuration with no current source finding. Real hardware remains the only machine-dependent acceptance gate.
 
 ## Rollback
 

@@ -154,7 +154,15 @@ Run the final local gates after the APIs are healthy:
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\local\Test-LocalPerformance.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\local\Test-SourceScan.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\local\Test-LocalBusinessFlow.ps1
 ```
 
 The performance check warms the Main API and measures 100 sequential `/health`
 requests. It fails when p95 reaches 500 ms.
+
+The business-flow check reads the seeded kiosk menu, creates one local `RESO`
+order, calls the local sandbox-success callback, verifies the order reaches
+`Completed` through the Kiosk workflow, reads the order details through the
+authenticated admin API, and replays the callback to verify idempotency. No
+external payment provider is called; the Flutter Sandbox button uses this same
+local callback.

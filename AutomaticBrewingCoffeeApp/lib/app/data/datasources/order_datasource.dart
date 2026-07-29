@@ -97,6 +97,17 @@ class OrderDatasource {
     }
   }
 
+  Future<bool> markSandboxPaymentSuccess(String orderId) async {
+    try {
+      final response = await api.post('/local-payments/$orderId/success');
+      return response.statusCode == 202 && response.data['isSuccess'] == true;
+    } catch (e, stackTrace) {
+      print('Error confirming sandbox payment: $e');
+      print(stackTrace);
+      return false;
+    }
+  }
+
   Future<BaseResultRequestResponse<OrderQueryDto, Pagination<Order>>>
       getLocalOrderPagination(OrderQueryDto query) async {
     try {

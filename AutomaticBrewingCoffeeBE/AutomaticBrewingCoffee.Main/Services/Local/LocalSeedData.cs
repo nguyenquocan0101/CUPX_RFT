@@ -17,8 +17,10 @@ public sealed class LocalSeedData
     public required Menu Menu { get; init; }
     public required ProductCategory ProductCategory { get; init; }
     public required Product Product { get; init; }
+    public required Product ProductMaking { get; init; }
     public required MenuProductMapping MenuProductMapping { get; init; }
     public required KioskVersionProductMapping KioskVersionProductMapping { get; init; }
+    public required KioskVersionProductMapping KioskVersionProductMappingMaking { get; init; }
     public required DeviceType DeviceType { get; init; }
     public required DeviceModel DeviceModel { get; init; }
     public required KioskVersionDeviceModelMapping KioskVersionDeviceModelMapping { get; init; }
@@ -40,6 +42,7 @@ public sealed class LocalSeedData
         const string menuId = "local-menu";
         const string categoryId = "local-category";
         const string productId = "local-product";
+        const string productMakingId = "local-product-making";
         const string deviceTypeId = "local-device-type";
         const string deviceModelId = "local-device-model";
         const string deviceId = "local-device";
@@ -121,6 +124,17 @@ public sealed class LocalSeedData
                 Price = 20000m,
                 CreatedDate = CreatedDate
             },
+            ProductMaking = new Product
+            {
+                ProductId = productMakingId,
+                ParentId = productId,
+                ProductCategoryId = categoryId,
+                Name = "Local Coffee Making",
+                Status = EBaseStatus.Active.ToString(),
+                Type = "Making",
+                Price = 0m,
+                CreatedDate = CreatedDate
+            },
             MenuProductMapping = new MenuProductMapping
             {
                 MenuId = menuId,
@@ -134,6 +148,12 @@ public sealed class LocalSeedData
             {
                 KioskVersionId = kioskVersionId,
                 ProductId = productId,
+                CreatedDate = CreatedDate
+            },
+            KioskVersionProductMappingMaking = new KioskVersionProductMapping
+            {
+                KioskVersionId = kioskVersionId,
+                ProductId = productMakingId,
                 CreatedDate = CreatedDate
             },
             DeviceType = new DeviceType
@@ -189,6 +209,7 @@ public sealed class LocalSeedData
                 KioskDeviceMappingId = "local-kiosk-device",
                 KioskId = kioskId,
                 DeviceId = deviceId,
+                Side = ESide.Left.ToString(),
                 Status = EBaseStatus.Active.ToString(),
                 CreatedDate = CreatedDate
             },
