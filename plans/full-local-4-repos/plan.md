@@ -240,7 +240,7 @@ Confirmed by the user on 2026-07-29:
 - **Accepted:** automatic EF migration and the data-only SQL dump are unsafe defaults. Phase 02 changes database initialization to an explicit, isolated and backed-up workflow.
 - **Accepted:** switching all hardware at once has a large blast radius. Phase 06 freezes and tests the command contract in simulator mode before Phase 07 touches COM controllers.
 - **Accepted:** an acknowledgement lost after a physical action cannot be made safe by blind retry. Real mode forbids automatic retry for unknown outcomes and deduplicates by command ID.
-- **Noted:** Arm controller target-framework compatibility remains a Phase 07 gate; the only permitted fallback is a narrow bridge, not a driver rewrite.
+- **Resolved:** ArmController2 keeps the .NET Framework driver and uses a narrow RabbitMQ 6/local JSON journal adapter; no driver retargeting was required.
 - **Noted:** Flutter/Android setup is host-mutating and partially interactive. It is isolated to Phase 05 and does not alter the system Flutter installation.
 - **Accepted:** local launch must explicitly set environment `Local`; the generic `http` launch profile is not a valid verification path.
 - **Accepted:** SQL migration uses a pinned EF tool, a concrete ownership marker, explicit database targeting and fail-fast `sqlcmd`.
