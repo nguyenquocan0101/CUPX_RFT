@@ -30,6 +30,36 @@ function Test-ListeningPort {
         Select-Object -First 1)
 }
 
+function Resolve-ToolPath {
+    param([string]$Name)
+
+    $command = Get-Command $Name -ErrorAction SilentlyContinue
+    if ($command) { return $command.Source }
+
+    $candidates = switch ($Name) {
+        'fvm' {
+            @(Join-Path $env:LOCALAPPDATA 'Pub\Cache\bin\fvm.bat')
+        }
+        'adb' {
+            @(
+                if ($env:ANDROID_HOME) { Join-Path $env:ANDROID_HOME 'platform-tools\adb.exe' }
+                if ($env:ANDROID_SDK_ROOT) { Join-Path $env:ANDROID_SDK_ROOT 'platform-tools\adb.exe' }
+                Join-Path $env:LOCALAPPDATA 'Android\Sdk\platform-tools\adb.exe'
+            )
+        }
+        default { @() }
+    }
+
+    foreach ($candidate in $candidates) {
+        if (-not [string]::IsNullOrWhiteSpace($candidate) -and
+            (Test-Path -LiteralPath $candidate -PathType Leaf)) {
+            return $candidate
+        }
+    }
+
+    return $null
+}
+
 Write-Host "Repository: $repoRoot"
 
 $dockerDesktopPath = Join-Path $env:ProgramFiles 'Docker\Docker\Docker Desktop.exe'
@@ -73,9 +103,9 @@ foreach ($port in $requiredFreePorts) {
 }
 
 foreach ($tool in @('dotnet', 'node', 'npm', 'flutter', 'fvm', 'adb', 'sqlcmd')) {
-    $command = Get-Command $tool -ErrorAction SilentlyContinue
-    Add-CheckResult -Name $tool -Passed ($null -ne $command) `
-        -Detail $(if ($command) { $command.Source } else { 'not in PATH; required in a later phase' })
+    $toolPath = Resolve-ToolPath -Name $tool
+    Add-CheckResult -Name $tool -Passed (-not [string]::IsNullOrWhiteSpace($toolPath)) `
+        -Detail $(if ($toolPath) { $toolPath } else { 'not installed; required in a later phase' })
 }
 
 if ($failures.Count -gt 0) {
