@@ -12,7 +12,8 @@ $paths = @(
     'scripts/**',
     ':(exclude)config/local-environment.example',
     ':(exclude)scripts/local/Test-SourceScan.ps1',
-    ':(exclude)scripts/local/Test-GitHistoryAudit.ps1'
+    ':(exclude)scripts/local/Test-GitHistoryAudit.ps1',
+    ':(exclude)scripts/local/Test-CleanClone.ps1'
 )
 $patterns = @(
     @{ Name = 'private-key-marker'; Value = 'BEGIN (RSA|OPENSSH|PRIVATE) KEY' },
