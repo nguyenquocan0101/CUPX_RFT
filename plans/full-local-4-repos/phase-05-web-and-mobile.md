@@ -89,6 +89,9 @@ fvm use 3.41.9
 fvm flutter pub get
 fvm flutter analyze
 fvm flutter test
+fvm flutter build apk --debug `
+  --dart-define=CUPX_API_BASE_URL=http://10.0.2.2:5100/api/v1 `
+  --dart-define=CUPX_SIGNALR_URL=http://10.0.2.2:5100/hubs/notification
 Set-Location ..\
 
 adb reverse tcp:5100 tcp:5100
@@ -105,6 +108,11 @@ rg -n "https?://" .\AutomaticBrewingCoffeeFE .\AutomaticBrewingCoffeeApp\lib `
 Every remaining match must be either a documented package/reference URL or an explicitly non-executable asset; no production API, refresh, SignalR or export URL may remain.
 
 `Test-Clients.ps1` runs install/build/analyze/test/URL-scan steps fail-fast, checks every native exit code and fails if a configured filtered test selection discovers zero tests.
+
+The debug APK also builds with the emulator-local endpoints above. On this host,
+AVD `Medium_Phone_API_36.1` booted as `emulator-5554`, installed
+`com.example.abc_androidapp`, launched `MainActivity`, and the emulator TCP
+check reached the local host bridge at `10.0.2.2:5100`.
 
 ## Gate
 
