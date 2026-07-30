@@ -54,6 +54,12 @@ $queueName = "cupx.phase01.persistence.$runId"
 $minioObject = "phase01-persistence/$runId.txt"
 $mailSubject = "cupx-phase01-persistence-$runId"
 
+Write-Host 'Ensuring local infrastructure is healthy before writing persistence sentinels...'
+& (Join-Path $PSScriptRoot 'Start-Infra.ps1') -EnvFile $EnvFile
+if ($LASTEXITCODE -ne 0) {
+    throw 'Unable to start local infrastructure before persistence verification.'
+}
+
 Invoke-Compose exec -T redis redis-cli SET $redisKey $marker | Out-Null
 
 $couchDatabaseUri = 'http://localhost:5984/cupx_phase01_persistence'

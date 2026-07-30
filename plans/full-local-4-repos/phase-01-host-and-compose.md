@@ -63,7 +63,7 @@ Test-NetConnection 127.0.0.1 -Port 6379
 powershell -ExecutionPolicy Bypass -File .\scripts\local\Test-InfraPersistence.ps1
 ```
 
-Persistence check creates non-secret sentinel state in Redis, CouchDB and MinIO, publishes one persistent message to a durable RabbitMQ queue, sends one Mailpit message, runs `docker compose down`, starts again without `-v`, and verifies every sentinel remains.
+Persistence check ensures the infrastructure is healthy before writing non-secret sentinel state in Redis, CouchDB and MinIO, publishes one persistent message to a durable RabbitMQ queue, sends one Mailpit message, runs `docker compose down`, starts again without `-v`, and verifies every sentinel remains.
 
 All PowerShell verification scripts set `$ErrorActionPreference = 'Stop'`, check `$LASTEXITCODE` after native commands and fail when a filtered test command reports zero discovered tests.
 
