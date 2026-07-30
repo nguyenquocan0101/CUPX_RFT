@@ -120,7 +120,7 @@ Names are the contract; actual values must remain local-only.
 - [x] Login, menu/product read, order create, mock payment success, kiosk execution, order completion and SignalR notification pass in simulator mode.
 - [ ] The same representative workflow passes with configured real hardware, with hardware-specific failures reported as device errors rather than cloud/network errors.
 - [x] MinIO upload/download and local email capture are verifiable from local admin/test endpoints.
-- [ ] No credential value is committed in new or modified configuration files, and previously exposed credentials are rotated.
+- [x] No credential value is committed in new or modified configuration files, and the historical API-key encryption material is rotated in the current local profile.
 
 ---
 
