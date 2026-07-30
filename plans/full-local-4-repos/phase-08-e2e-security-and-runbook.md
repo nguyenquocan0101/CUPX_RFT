@@ -18,6 +18,7 @@ Create:
 - `scripts/local/Test-LocalPerformance.ps1`
 - `scripts/local/Test-LocalBusinessFlow.ps1`
 - `scripts/local/Test-SignalRNotification.mjs`
+- `scripts/local/Test-CleanClone.ps1`
 - `scripts/local/Test-Persistence.ps1`
 - `docs/local-development.md` final runbook updates
 - `docs/local-troubleshooting.md`
@@ -107,6 +108,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\local\Test-GitHistoryAudit.ps
 powershell -ExecutionPolicy Bypass -File .\scripts\local\Test-LocalPerformance.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\local\Test-LocalBusinessFlow.ps1
 node .\scripts\local\Test-SignalRNotification.mjs
+powershell -ExecutionPolicy Bypass -File .\scripts\local\Test-CleanClone.ps1
 
 $env:LOCAL_MODE = 'true'
 dotnet test .\AutomaticBrewingCoffeeBE\AutomaticBrewingCoffee.Main\AutomaticBrewingCoffee.sln
@@ -124,7 +126,10 @@ notification verifier after the simulator workflow checks. The verifier uses
 the installed frontend SignalR client package and requires the two APIs to be
 healthy.
 
-Clean clone validation uses a new temporary directory, follows only the runbook and confirms all four top-level projects are present. It must not copy the original workspace `.env`, database files or build outputs.
+`Test-CleanClone.ps1` uses a new temporary directory, clones the pushed ref at
+depth one, confirms all four top-level projects and required runbook files are
+present, and rejects tracked credential/build output or nested repositories. It
+does not copy the original workspace `.env`, database files or build outputs.
 
 ## Gate
 

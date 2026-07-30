@@ -188,8 +188,10 @@ Run the final local gates after the APIs are healthy:
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\local\Test-LocalPerformance.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\local\Test-SourceScan.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\local\Test-GitHistoryAudit.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\local\Test-LocalBusinessFlow.ps1
 node .\scripts\local\Test-SignalRNotification.mjs
+powershell -ExecutionPolicy Bypass -File .\scripts\local\Test-CleanClone.ps1
 ```
 
 The performance check warms the Main API and measures 100 sequential `/health`
