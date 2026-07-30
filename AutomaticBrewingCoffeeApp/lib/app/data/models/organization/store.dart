@@ -23,16 +23,16 @@ class Store {
 
   factory Store.fromJson(Map<String, dynamic> json) {
     return Store(
-      storeId: json['storeId'] as String,
-      organizationId: json['organizationId'] as String,
-      contactPhone: json['contactPhone'] as String,
-      name: json['name'] as String,
-      locationAddress: json['locationAddress'] as String,
-      locationTypeId: json['locationTypeId'] as String,
+      storeId: json['storeId'] as String? ?? '',
+      organizationId: json['organizationId'] as String? ?? '',
+      contactPhone: json['contactPhone'] as String? ?? '',
+      name: json['name'] as String? ?? '',
+      locationAddress: json['locationAddress'] as String? ?? '',
+      locationTypeId: json['locationTypeId'] as String? ?? '',
       locationType: json['locationType'] != null
           ? LocationType.fromJson(json['locationType'] as Map<String, dynamic>)
           : null,
-      status: json['status'] as String,
+      status: json['status'] as String? ?? '',
     );
   }
 

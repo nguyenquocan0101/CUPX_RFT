@@ -7,5 +7,6 @@ void main() {
     expect(ApiConstants.order, '/orders');
     expect(ApiConstants.organization, '/organizations/current');
     expect(ApiConstants.apiKeyHeader, 'X-API-KEY');
+    expect(ApiConstants.side, 'left');
   });
 }

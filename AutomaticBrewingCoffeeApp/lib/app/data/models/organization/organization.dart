@@ -31,17 +31,17 @@ class Organization {
 
   factory Organization.fromJson(Map<String, dynamic> json) {
     return Organization(
-      organizationId: json['organizationId'] as String,
-      name: json['name'] as String,
-      organizationCode: json['organizationCode'] as String,
-      description: json['description'] as String,
-      contactPhone: json['contactPhone'] as String,
-      contactEmail: json['contactEmail'] as String,
-      logoUrl: json['logoUrl'] as String,
-      taxId: json['taxId'] as String,
-      status: json['status'] as String,
+      organizationId: json['organizationId'] as String? ?? '',
+      name: json['name'] as String? ?? '',
+      organizationCode: json['organizationCode'] as String? ?? '',
+      description: json['description'] as String? ?? '',
+      contactPhone: json['contactPhone'] as String? ?? '',
+      contactEmail: json['contactEmail'] as String? ?? '',
+      logoUrl: json['logoUrl'] as String? ?? '',
+      taxId: json['taxId'] as String? ?? '',
+      status: json['status'] as String? ?? '',
       createdDate: DateTime.parse(json['createdDate'] as String),
-      isDeleted: json['isDeleted'] as bool,
+      isDeleted: json['isDeleted'] as bool? ?? false,
       store: json['store'] != null 
           ? Store.fromJson(json['store'] as Map<String, dynamic>)
           : null,

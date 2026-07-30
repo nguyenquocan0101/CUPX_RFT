@@ -1,9 +1,9 @@
+import 'package:abc_androidapp/app/core/network/api_constants.dart';
 import 'package:abc_androidapp/app/core/router/app_router.dart';
 import 'package:abc_androidapp/app/core/kiosk_mode/admin_exit_detector.dart'; // Thêm import
 import 'package:abc_androidapp/app/presentation/cubits/welcome/app_flow_cubit.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:tdesign_flutter/tdesign_flutter.dart';
 import 'dart:math' as math;
 
@@ -24,7 +24,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
   // Primary brand color
   final Color primaryColor = const Color(0xFF57B7E7);
-  final String kioskSide = dotenv.env['SIDE']!;
+  final String kioskSide = ApiConstants.side;
 
   @override
   void initState() {

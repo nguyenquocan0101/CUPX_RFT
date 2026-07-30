@@ -94,6 +94,8 @@ fvm flutter build apk --debug `
   --dart-define=CUPX_SIGNALR_URL=http://10.0.2.2:5100/hubs/notification
 Set-Location ..\
 
+powershell -ExecutionPolicy Bypass -File .\scripts\local\Test-AndroidLocal.ps1
+
 adb reverse tcp:5100 tcp:5100
 adb reverse tcp:5160 tcp:5160
 ```
@@ -112,7 +114,11 @@ Every remaining match must be either a documented package/reference URL or an ex
 The debug APK also builds with the emulator-local endpoints above. On this host,
 AVD `Medium_Phone_API_36.1` booted as `emulator-5554`, installed
 `com.example.abc_androidapp`, launched `MainActivity`, and the emulator TCP
-check reached the local host bridge at `10.0.2.2:5100`.
+check reached the local host bridge at `10.0.2.2:5100`. The app rendered the
+CUPX welcome screen with the local `SIDE` fallback and `Đặt Hàng` action
+without a dotenv initialization error. `Test-AndroidLocal.ps1` loads the
+ignored local API key without printing it, then verifies organization preload
+from the local Main API.
 
 ## Gate
 
