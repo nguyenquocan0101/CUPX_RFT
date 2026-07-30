@@ -268,7 +268,7 @@ Confirmed by the user on 2026-07-29:
 
 **Last active:** 2026-07-29 18:45
 **Phase in progress:** phase-08-e2e-security-and-runbook
-**Status:** Local smoke, simulator restart workflow, business flow through `Completed`, idempotent payment replay, ArmController build, p95, source scan, history audit, clean-clone and client gates pass. Real hardware remains the explicit machine-dependent gate.
+**Status:** Local smoke, simulator restart workflow, business flow through `Completed`, idempotent payment replay, ArmController build, p95, working-tree source scan, clean-clone and client gates pass. Reachable-history audit reports historical API-key encryption material requiring rotation review. Real hardware remains the explicit machine-dependent gate.
 
 ### Decisions made this session
 
@@ -286,7 +286,7 @@ Phase 04 verification completed: local auth, MinIO product image round-trip, Mai
 - Phase 05: Next.js production build, executable URL scan, tracked frontend sample localhost cleanup, FVM 3.41.9 Flutter analyze/test pass.
 - Phase 06: RabbitMQ device-command publish/consume, startup topology, RabbitMQ invoker wiring, SQLite-journal simulator self-test and representative workflow Done/Observed E2E pass. Restart durability also passes with `Test-SimulatorWorkflow.ps1 -RestartKioskAfterEnqueue`: re-delivered workflow updates its CouchDB delivery tag and completes after Kiosk restart.
 - Phase 07: Serial inventory confirms only Bluetooth COM17/COM18; profile preflight blocks real mode until verified wired mappings exist. Five .NET 8 native controller projects and ArmController2 now select local RabbitMQ ingress in `HARDWARE_MODE=real`; ArmController/FRRobot and ArmController2 build with installed .NET Framework 4.8.1 tooling, and Arm JSON journal reconciliation smoke passes.
-- Phase 08: Start-All, Stop-All, Smoke-Test, Test-Persistence, Reset-LocalState, Test-SourceScan, Test-LocalPerformance, Test-LocalBusinessFlow and troubleshooting runbook added. Local smoke, persistence, simulator restart durability, menu/order business flow through `Completed`, idempotent sandbox callback replay, 100-request `/health` p95, source scan, reachable-history audit and clean clone verification pass.
+- Phase 08: Start-All, Stop-All, Smoke-Test, Test-Persistence, Reset-LocalState, Test-SourceScan, Test-LocalPerformance, Test-LocalBusinessFlow and troubleshooting runbook added. Local smoke, persistence, simulator restart durability, menu/order business flow through `Completed`, idempotent sandbox callback replay, 100-request `/health` p95, working-tree source scan and clean clone verification pass. Reachable-history audit correctly reports historical API-key encryption material; rotation review remains open.
 
 ## Definition Of Done
 

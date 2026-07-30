@@ -114,10 +114,10 @@ Names are the contract; actual values must remain local-only.
 
 ## Success Criteria
 
-- [ ] A clean machine setup document lets a developer start all required local infrastructure with one Compose command.
-- [ ] Backend chính, kiosk backend and Next.js can complete their health checks without cloud credentials.
-- [ ] Flutter points only to local API/SignalR endpoints in the local profile; no hardcoded public refresh URL remains.
-- [ ] Login, menu/product read, order create, mock payment success, kiosk execution, order completion and SignalR notification pass in simulator mode.
+- [x] A clean machine setup document lets a developer start all required local infrastructure with one Compose command.
+- [x] Backend chính, kiosk backend and Next.js can complete their health checks without cloud credentials.
+- [x] Flutter points only to local API/SignalR endpoints in the local profile; no hardcoded public refresh URL remains.
+- [x] Login, menu/product read, order create, mock payment success, kiosk execution, order completion and SignalR notification pass in simulator mode.
 - [ ] The same representative workflow passes with configured real hardware, with hardware-specific failures reported as device errors rather than cloud/network errors.
 - [x] MinIO upload/download and local email capture are verifiable from local admin/test endpoints.
 - [ ] No credential value is committed in new or modified configuration files, and previously exposed credentials are rotated.
