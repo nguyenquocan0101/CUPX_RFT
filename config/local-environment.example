@@ -1,9 +1,9 @@
 # Reference only. Generate the ignored .local/compose-vars file with the setup script.
 RABBITMQ_USERNAME=cupx
-RABBITMQ_PASSWORD=cupx123456
+RABBITMQ_PASSWORD=change-me
 COUCHDB_USERNAME=cupx
-COUCHDB_PASSWORD=cupx123456
-COUCHDB_SECRET=cupx-secret-key-ne-2026
+COUCHDB_PASSWORD=change-me
+COUCHDB_SECRET=change-me
 MINIO_ROOT_USER=cupx
-MINIO_ROOT_PASSWORD=cupx123456
+MINIO_ROOT_PASSWORD=change-me
 MINIO_BUCKET=cupx-local

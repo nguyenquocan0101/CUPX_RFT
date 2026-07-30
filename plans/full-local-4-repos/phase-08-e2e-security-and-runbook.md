@@ -14,6 +14,7 @@ Create:
 - `scripts/local/Smoke-Test.ps1`
 - `scripts/local/Reset-LocalState.ps1`
 - `scripts/local/Test-SourceScan.ps1`
+- `scripts/local/Test-GitHistoryAudit.ps1`
 - `scripts/local/Test-LocalPerformance.ps1`
 - `scripts/local/Test-LocalBusinessFlow.ps1`
 - `scripts/local/Test-SignalRNotification.mjs`
@@ -102,6 +103,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\local\Start-All.ps1 -Hardware
 powershell -ExecutionPolicy Bypass -File .\scripts\local\Smoke-Test.ps1 -HardwareMode simulator
 powershell -ExecutionPolicy Bypass -File .\scripts\local\Test-Persistence.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\local\Test-SourceScan.ps1
+powershell -ExecutionPolicy Bypass -File .\scripts\local\Test-GitHistoryAudit.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\local\Test-LocalPerformance.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\local\Test-LocalBusinessFlow.ps1
 node .\scripts\local\Test-SignalRNotification.mjs
