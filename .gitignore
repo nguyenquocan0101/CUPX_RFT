@@ -6,6 +6,7 @@
 **/*firebase-adminsdk*.json
 **/*credential*.json
 **/ENV_CONFIG_SUMMARY.md
+config/hardware-profiles.local.json
 
 # Nested repository metadata and local agent indexes
 **/.git/

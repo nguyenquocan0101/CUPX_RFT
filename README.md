@@ -9,6 +9,8 @@ handed-off projects remain in these top-level directories:
 - `AutomaticBrewingCoffeeApp` - Flutter kiosk client
 
 Start with the local runbook: [docs/local-development.md](docs/local-development.md).
+For the company machine with wired controllers and a robot, use
+[docs/physical-hardware-handoff.md](docs/physical-hardware-handoff.md).
 The short startup path is:
 
 ```powershell
