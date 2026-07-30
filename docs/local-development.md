@@ -189,6 +189,7 @@ Run the final local gates after the APIs are healthy:
 powershell -ExecutionPolicy Bypass -File .\scripts\local\Test-LocalPerformance.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\local\Test-SourceScan.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\local\Test-LocalBusinessFlow.ps1
+node .\scripts\local\Test-SignalRNotification.mjs
 ```
 
 The performance check warms the Main API and measures 100 sequential `/health`
@@ -200,3 +201,8 @@ order, calls the local sandbox-success callback, verifies the order reaches
 authenticated admin API, and replays the callback to verify idempotency. No
 external payment provider is called; the Flutter Sandbox button uses this same
 local callback.
+
+The SignalR check creates a separate local order, connects to the notification
+hub with the seeded admin JWT, invokes the local order-failure callback, and
+waits for `ReceiveNotification` from the CAP subscriber. It does not contact a
+cloud notification service.

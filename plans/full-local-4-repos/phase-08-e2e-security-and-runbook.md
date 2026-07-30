@@ -16,6 +16,7 @@ Create:
 - `scripts/local/Test-SourceScan.ps1`
 - `scripts/local/Test-LocalPerformance.ps1`
 - `scripts/local/Test-LocalBusinessFlow.ps1`
+- `scripts/local/Test-SignalRNotification.mjs`
 - `scripts/local/Test-Persistence.ps1`
 - `docs/local-development.md` final runbook updates
 - `docs/local-troubleshooting.md`
@@ -103,6 +104,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\local\Test-Persistence.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\local\Test-SourceScan.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\local\Test-LocalPerformance.ps1
 powershell -ExecutionPolicy Bypass -File .\scripts\local\Test-LocalBusinessFlow.ps1
+node .\scripts\local\Test-SignalRNotification.mjs
 
 $env:LOCAL_MODE = 'true'
 dotnet test .\AutomaticBrewingCoffeeBE\AutomaticBrewingCoffee.Main\AutomaticBrewingCoffee.sln
@@ -114,6 +116,11 @@ fvm flutter analyze
 fvm flutter test
 Pop-Location
 ```
+
+`Smoke-Test.ps1 -HardwareMode simulator` also runs the local SignalR
+notification verifier after the simulator workflow checks. The verifier uses
+the installed frontend SignalR client package and requires the two APIs to be
+healthy.
 
 Clean clone validation uses a new temporary directory, follows only the runbook and confirms all four top-level projects are present. It must not copy the original workspace `.env`, database files or build outputs.
 
@@ -127,7 +134,7 @@ Clean clone validation uses a new temporary directory, follows only the runbook 
 - Clean clone follows the runbook without original remotes or cloud credentials.
 - Final commit/push occurs only after all evidence is recorded.
 
-Current evidence: `/health` p95 is 8.79 ms over 100 warmed requests; working-tree source scan passes; local business flow verifies menu read, order creation, sandbox-success callback, Preparing -> Completed workflow, order/detail reads and idempotent callback replay; MinIO upload/read is byte-for-byte (`HTTP 202`, 68 bytes, matching SHA-256); durable webhook inbox/outbox replay passes after a real Main API process restart with `Succeeded|Succeeded|1|1|GET`; infrastructure, Kiosk CouchDB/RabbitMQ and webhook persistence pass; Main local tests pass `35/35` and Kiosk tests pass `4/4`; Next.js production build, Flutter tests, Flutter analyze with non-fatal legacy lints, simulator workflow restart, all five .NET 8 controller builds, ArmController2 build with local Rabbit compatibility path and a depth-one clean clone from `origin/main` pass. Device simulator self-test now covers atomic duplicate claims, restart-to-`Unknown`, refusal to retry, explicit operator reconciliation and idempotent result replay; Arm journal reconciliation smoke also passes. All six native controller ingress paths now have local configuration; the final real-controller gate remains unmet because this host exposes only Bluetooth COM17/COM18 and no reachable Fairino robot for an operator-observed workflow.
+Current evidence: `/health` p95 is 26.5 ms over 100 warmed requests; working-tree source scan passes; local business flow verifies menu read, order creation, sandbox-success callback, Preparing -> Completed workflow, order/detail reads and idempotent callback replay; `Test-SignalRNotification.mjs` verifies a JWT-authenticated local hub receives `ReceiveNotification` after the local order-fail callback; MinIO upload/read is byte-for-byte (`HTTP 202`, 68 bytes, matching SHA-256); durable webhook inbox/outbox replay passes after a real Main API process restart with `Succeeded|Succeeded|1|1|GET`; infrastructure, Kiosk CouchDB/RabbitMQ and webhook persistence pass; Main local tests pass `35/35` and Kiosk tests pass `4/4`; Next.js production build, Flutter tests, Flutter analyze with non-fatal legacy lints, simulator workflow restart, all five .NET 8 controller builds, ArmController2 build with local Rabbit compatibility path and a depth-one clean clone from `origin/main` pass. Device simulator self-test now covers atomic duplicate claims, restart-to-`Unknown`, refusal to retry, explicit operator reconciliation and idempotent result replay; Arm journal reconciliation smoke also passes. All six native controller ingress paths now have local configuration; the final real-controller gate remains unmet because this host exposes only Bluetooth COM17/COM18 and no reachable Fairino robot for an operator-observed workflow.
 
 ## Rollback
 

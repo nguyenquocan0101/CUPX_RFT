@@ -25,7 +25,7 @@
     "user_visible_behavior": "so that business flows preserve existing contracts without Firebase, Supabase, external SMTP, or payment accounts",
     "verification_command": "powershell -ExecutionPolicy Bypass -File .\\scripts\\local\\Smoke-Test.ps1 -HardwareMode simulator",
     "status": "passing",
-    "evidence": "Payment intentionally deferred per user direction: sandbox UI uses a local success button and does not call VNPay/MPOS. Local auth, MinIO adapter, Mailpit SMTP, and Main -> Kiosk webhook are active. Webhook inbox/outbox is persisted in AutoBrewing_BE_Local with unique replay keys and restart replay verified. Product image upload/read round-trip through MinIO verified byte-for-byte by scripts/local/Test-MinioObjectStorage.ps1.",
+    "evidence": "Payment intentionally deferred per user direction: sandbox UI uses a local success button and does not call VNPay/MPOS. Local auth, MinIO adapter, Mailpit SMTP, and Main -> Kiosk webhook are active. Webhook inbox/outbox is persisted in AutoBrewing_BE_Local with unique replay keys and restart replay verified. Product image upload/read round-trip through MinIO verified byte-for-byte by scripts/local/Test-MinioObjectStorage.ps1. A JWT-authenticated SignalR client receives ReceiveNotification after the local order-failure callback via scripts/local/Test-SignalRNotification.mjs.",
     "notes": "",
     "priority": "P1"
   },

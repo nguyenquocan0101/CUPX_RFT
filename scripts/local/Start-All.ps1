@@ -34,29 +34,71 @@ if (-not $SkipDatabase) { & (Join-Path $PSScriptRoot 'Initialize-MainDatabase.ps
 & (Join-Path $PSScriptRoot 'Start-Infra.ps1')
 
 function Start-LocalProcess {
-    param([string]$Name, [string]$Script)
+    param(
+        [string]$Name,
+        [string]$Script,
+        [int]$Port = 0,
+        [string]$ChildMarker
+    )
+
+    function Stop-ProcessTree {
+        param([int]$RootId)
+        $children = @(Get-CimInstance Win32_Process -Filter "ParentProcessId = $RootId" -ErrorAction SilentlyContinue)
+        foreach ($child in $children) { Stop-ProcessTree -RootId $child.ProcessId }
+        if (Get-Process -Id $RootId -ErrorAction SilentlyContinue) {
+            Stop-Process -Id $RootId -Force -ErrorAction SilentlyContinue
+        }
+    }
+
     $pidFile = Join-Path $runtime "$Name.pid"
     if (Test-Path -LiteralPath $pidFile) {
         $existing = [int](Get-Content -LiteralPath $pidFile)
         $existingProcess = Get-CimInstance Win32_Process -Filter "ProcessId = $existing" -ErrorAction SilentlyContinue
-        if ($existingProcess -and $existingProcess.CommandLine -like "*$Script*") { return }
+        if ($existingProcess -and $existingProcess.CommandLine -like "*$Script*") {
+            $healthy = if ($Port -gt 0) {
+                [bool](Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue)
+            } elseif ($ChildMarker) {
+                [bool](Get-CimInstance Win32_Process | Where-Object {
+                    $_.CommandLine -like "*$ChildMarker*" -and $_.CommandLine -like "*$repoRoot*"
+                } | Select-Object -First 1)
+            } else {
+                $true
+            }
+            if ($healthy) { return }
+            Stop-ProcessTree -RootId $existingProcess.ProcessId
+        }
         Remove-Item -LiteralPath $pidFile -Force -ErrorAction SilentlyContinue
     }
     $log = Join-Path $runtime "$Name.log"
     $errorLog = Join-Path $runtime "$Name.error.log"
     $process = Start-Process -FilePath 'powershell.exe' -WorkingDirectory $repoRoot -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', $Script) -RedirectStandardOutput $log -RedirectStandardError $errorLog -PassThru
     $process.Id | Set-Content -LiteralPath $pidFile -Encoding ascii
-    Start-Sleep -Seconds 2
+    $deadline = (Get-Date).AddSeconds(60)
+    do {
+        $healthy = if ($Port -gt 0) {
+            [bool](Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction SilentlyContinue)
+        } elseif ($ChildMarker) {
+            [bool](Get-CimInstance Win32_Process | Where-Object {
+                $_.CommandLine -like "*$ChildMarker*" -and $_.CommandLine -like "*$repoRoot*"
+            } | Select-Object -First 1)
+        } else {
+            $true
+        }
+        if ($healthy) { return }
+        Start-Sleep -Milliseconds 500
+    } while ((Get-Date) -lt $deadline)
+
+    throw "$Name did not become healthy within 60 seconds. See $log and $errorLog."
 }
 
 if (-not (Get-NetTCPConnection -State Listen -LocalPort 5100 -ErrorAction SilentlyContinue)) {
-    Start-LocalProcess -Name 'main-api' -Script (Join-Path $PSScriptRoot 'Start-MainApi.ps1')
+    Start-LocalProcess -Name 'main-api' -Script (Join-Path $PSScriptRoot 'Start-MainApi.ps1') -Port 5100
 }
 if (-not (Get-NetTCPConnection -State Listen -LocalPort 5160 -ErrorAction SilentlyContinue)) {
-    Start-LocalProcess -Name 'kiosk-api' -Script (Join-Path $PSScriptRoot 'Start-KioskApi.ps1')
+    Start-LocalProcess -Name 'kiosk-api' -Script (Join-Path $PSScriptRoot 'Start-KioskApi.ps1') -Port 5160
 }
 if ($HardwareMode -eq 'simulator' -and -not $SkipSimulator) {
-    Start-LocalProcess -Name 'device-simulator' -Script (Join-Path $PSScriptRoot 'Start-DeviceSimulator.ps1')
+    Start-LocalProcess -Name 'device-simulator' -Script (Join-Path $PSScriptRoot 'Start-DeviceSimulator.ps1') -ChildMarker 'DeviceSimulator'
 }
 
 if (-not $SkipFrontend) {

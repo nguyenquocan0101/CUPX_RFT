@@ -171,27 +171,43 @@ sealed class DeviceJournal : IAsyncDisposable
 
     public async Task RunSelfTestAsync()
     {
-        var request = new DeviceCommandRequest("self-test-command", 1, "self-test-correlation", "workflow", "step", "device", "dispense", new(), DateTimeOffset.UtcNow, 1000);
+        var testRunId = Guid.NewGuid().ToString("N");
+        var request = new DeviceCommandRequest($"self-test-command-{testRunId}", 1, $"self-test-correlation-{testRunId}", "workflow", "step", "device", "dispense", new(), DateTimeOffset.UtcNow, 1000);
         var first = await ExecuteAsync(request, SimulatorOptions.Parse(Array.Empty<string>()));
         var second = await ExecuteAsync(request, SimulatorOptions.Parse(Array.Empty<string>()));
         if (first.Status != "Completed" || second.Status != "Completed") throw new InvalidOperationException("Idempotency check failed.");
 
-        var concurrent = request with { CommandId = "self-test-concurrent-command", CorrelationId = "self-test-concurrent-correlation" };
-        var concurrentResults = await Task.WhenAll(Enumerable.Range(0, 2).Select(async _ =>
+        var concurrent = request with { CommandId = $"self-test-concurrent-command-{testRunId}", CorrelationId = $"self-test-concurrent-correlation-{testRunId}" };
+        var concurrentClaims = await Task.WhenAll(Enumerable.Range(0, 2).Select(async _ =>
         {
             try
             {
-                return await ExecuteAsync(concurrent, SimulatorOptions.Parse(Array.Empty<string>()));
+                return await ClaimExecutionAsync(concurrent);
             }
             catch (InvalidOperationException)
             {
-                return null;
+                return "uncertain";
             }
         }));
-        if (concurrentResults.Count(x => x?.Status == "Completed") != 1)
+        if (concurrentClaims.Count(x => x is null) != 1 || concurrentClaims.Count(x => x == "uncertain") != 1)
             throw new InvalidOperationException("Concurrent command claim check failed.");
 
-        var unknown = request with { CommandId = "self-test-unknown-command", CorrelationId = "self-test-unknown-correlation" };
+        var concurrentResult = new DeviceCommandResult(
+            concurrent.CommandId,
+            concurrent.SchemaVersion,
+            concurrent.CorrelationId,
+            concurrent.DeviceId,
+            "Completed",
+            new() { ["method"] = concurrent.Method, ["simulated"] = "true" },
+            null,
+            null,
+            DateTimeOffset.UtcNow);
+        await SaveAsync(concurrent, concurrentResult.Status, JsonSerializer.Serialize(concurrentResult));
+        var concurrentReplay = await ExecuteAsync(concurrent, SimulatorOptions.Parse(Array.Empty<string>()));
+        if (concurrentReplay.Status != "Completed")
+            throw new InvalidOperationException("Concurrent command replay check failed.");
+
+        var unknown = request with { CommandId = $"self-test-unknown-command-{testRunId}", CorrelationId = $"self-test-unknown-correlation-{testRunId}" };
         await SaveAsync(unknown, "Executing", null);
         await MarkUnknownAsync(unknown.CommandId);
         try

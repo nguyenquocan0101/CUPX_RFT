@@ -22,5 +22,7 @@ if ($HardwareMode -eq 'simulator') {
     if ($LASTEXITCODE -ne 0) { throw 'Device simulator journal self-test failed.' }
     & (Join-Path $PSScriptRoot 'Test-DeviceSimulator.ps1')
     & (Join-Path $PSScriptRoot 'Test-SimulatorWorkflow.ps1')
+    & node (Join-Path $PSScriptRoot 'Test-SignalRNotification.mjs')
+    if ($LASTEXITCODE -ne 0) { throw 'SignalR notification E2E failed.' }
 }
 Write-Host "Local smoke test passed. HardwareMode=$HardwareMode"
