@@ -33,6 +33,15 @@ if (-not $SkipDatabase) { & (Join-Path $PSScriptRoot 'Initialize-MainDatabase.ps
 
 & (Join-Path $PSScriptRoot 'Start-Infra.ps1')
 
+function Stop-ProcessTree {
+    param([int]$RootId)
+    $children = @(Get-CimInstance Win32_Process -Filter "ParentProcessId = $RootId" -ErrorAction SilentlyContinue)
+    foreach ($child in $children) { Stop-ProcessTree -RootId $child.ProcessId }
+    if (Get-Process -Id $RootId -ErrorAction SilentlyContinue) {
+        Stop-Process -Id $RootId -Force -ErrorAction SilentlyContinue
+    }
+}
+
 function Start-LocalProcess {
     param(
         [string]$Name,
@@ -40,15 +49,6 @@ function Start-LocalProcess {
         [int]$Port = 0,
         [string]$ChildMarker
     )
-
-    function Stop-ProcessTree {
-        param([int]$RootId)
-        $children = @(Get-CimInstance Win32_Process -Filter "ParentProcessId = $RootId" -ErrorAction SilentlyContinue)
-        foreach ($child in $children) { Stop-ProcessTree -RootId $child.ProcessId }
-        if (Get-Process -Id $RootId -ErrorAction SilentlyContinue) {
-            Stop-Process -Id $RootId -Force -ErrorAction SilentlyContinue
-        }
-    }
 
     $pidFile = Join-Path $runtime "$Name.pid"
     if (Test-Path -LiteralPath $pidFile) {
@@ -104,10 +104,42 @@ if ($HardwareMode -eq 'simulator' -and -not $SkipSimulator) {
 if (-not $SkipFrontend) {
     $frontendPath = Join-Path $repoRoot 'AutomaticBrewingCoffeeFE'
     if (-not (Get-NetTCPConnection -State Listen -LocalPort 3000 -ErrorAction SilentlyContinue)) {
+        $frontendPidFile = Join-Path $runtime 'frontend.pid'
+        if (Test-Path -LiteralPath $frontendPidFile) {
+            $frontendPid = [int](Get-Content -LiteralPath $frontendPidFile)
+            $frontendProcess = Get-CimInstance Win32_Process -Filter "ProcessId = $frontendPid" -ErrorAction SilentlyContinue
+            if ($frontendProcess -and $frontendProcess.CommandLine -like '*npm*') {
+                Stop-ProcessTree -RootId $frontendProcess.ProcessId
+            }
+            Remove-Item -LiteralPath $frontendPidFile -Force -ErrorAction SilentlyContinue
+        }
         $frontendLog = Join-Path $runtime 'frontend.log'
         $frontendErrorLog = Join-Path $runtime 'frontend.error.log'
         $process = Start-Process -FilePath 'cmd.exe' -WorkingDirectory $frontendPath -ArgumentList '/c', 'npm', 'run', 'dev' -RedirectStandardOutput $frontendLog -RedirectStandardError $frontendErrorLog -PassThru
         $process.Id | Set-Content -LiteralPath (Join-Path $runtime 'frontend.pid') -Encoding ascii
+        $deadline = (Get-Date).AddSeconds(60)
+        do {
+            if (Get-NetTCPConnection -State Listen -LocalPort 3000 -ErrorAction SilentlyContinue) { break }
+            Start-Sleep -Milliseconds 500
+        } while ((Get-Date) -lt $deadline)
+        if (-not (Get-NetTCPConnection -State Listen -LocalPort 3000 -ErrorAction SilentlyContinue)) {
+            throw "frontend did not become healthy within 60 seconds. See $frontendLog and $frontendErrorLog."
+        }
+
+        $routeReady = $false
+        $deadline = (Get-Date).AddSeconds(60)
+        do {
+            try {
+                $response = Invoke-WebRequest -UseBasicParsing -Uri 'http://127.0.0.1:3000/login' -TimeoutSec 5
+                $routeReady = $response.StatusCode -eq 200
+            }
+            catch {
+                Start-Sleep -Milliseconds 500
+            }
+        } while (-not $routeReady -and (Get-Date) -lt $deadline)
+        if (-not $routeReady) {
+            throw "frontend /login route did not become ready within 60 seconds. See $frontendLog and $frontendErrorLog."
+        }
     }
 }
 
